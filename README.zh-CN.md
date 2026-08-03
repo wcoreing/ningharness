@@ -44,9 +44,18 @@ ningharness/           Harness Open/Close/UseProject
   defaults/            装配 ToolHost + MCP + Eino（可选启用）
 ```
 
-## 快速开始 — 发一句话
+## 快速开始
 
 默认自带 **MCP 核工具** 与 **Eino Guest**；可不启用或自行替换。
+
+### 只起 MCP
+
+```bash
+go run ./examples/mcp /path/to/project
+# 打印 MCP 地址，如 http://127.0.0.1:51020/mcp
+```
+
+### 发一句话（Eino Guest）
 
 ```bash
 export NINGHARNESS_API_KEY=sk-...    # 或 OPENAI_API_KEY

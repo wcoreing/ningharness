@@ -44,9 +44,18 @@ ningharness/           Harness Open/Close/UseProject
   defaults/            wire ToolHost + MCP + Eino (opt-in)
 ```
 
-## Quick start — send one message
+## Quick start
 
 Defaults include **MCP core tools** + **Eino Guest**. Turn either off if you do not want them.
+
+### MCP only
+
+```bash
+go run ./examples/mcp /path/to/project
+# prints MCP URL, e.g. http://127.0.0.1:51020/mcp
+```
+
+### Send one message (Eino Guest)
 
 ```bash
 export NINGHARNESS_API_KEY=sk-...    # or OPENAI_API_KEY
