@@ -1,8 +1,7 @@
-// Example: defaults (MCP core tools + Eino guest) and one user message.
+// Example: one user message via default Eino Guest (no MCP HTTP).
 //
-//	export NINGHARNESS_API_KEY=...   # or OPENAI_API_KEY
-//	# optional: OPENAI_BASE_URL, NINGHARNESS_MODEL
-//	go run ./examples/chat [/path/to/project] ["your message"]
+//	1. Edit einoCfg below (APIKey / BaseURL / Model)
+//	2. go run ./examples/chat [/path/to/project] ["your message"]
 package main
 
 import (
@@ -13,7 +12,15 @@ import (
 
 	"ningharness"
 	"ningharness/defaults"
+	"ningharness/guest/eino"
 )
+
+// 直接改这里；空字符串才会回落到环境变量。
+var einoCfg = eino.Opts{
+	APIKey:  "sk-...",                        // 必填：模型 API key
+	BaseURL: "https://api.openai.com/v1",     // 网关/兼容端点改这里
+	Model:   "gpt-4o-mini",
+}
 
 func main() {
 	root := "."
@@ -34,7 +41,8 @@ func main() {
 			DataDir: filepath.Join(abs, ".ningharness-data"),
 			Root:    abs,
 		},
-		MCPAddr: "off", // one-shot chat; use ./examples/mcp for HTTP
+		MCPAddr: "off",
+		Eino:    einoCfg,
 	})
 	if err != nil {
 		fatal(err)

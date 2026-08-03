@@ -78,30 +78,25 @@ rt, err := defaults.Open(defaults.Opts{
 // rt.MCPURL() → 填进上面 url 字段
 ```
 
-### 可选：启用 Eino Guest（才需要 key + 可选链接）
+### 可选：启用 Eino Guest（在 demo 里配 key / 链接）
+
+编辑 [`examples/chat/main.go`](examples/chat/main.go) 顶部的 `einoCfg`：
+
+```go
+var einoCfg = eino.Opts{
+	APIKey:  "sk-...",                    // 必填
+	BaseURL: "https://api.openai.com/v1", // 网关改这里
+	Model:   "gpt-4o-mini",
+}
+```
+
+然后：
 
 ```bash
-export NINGHARNESS_API_KEY=sk-...              # 或 OPENAI_API_KEY
-export NINGHARNESS_BASE_URL=https://api.openai.com/v1   # 或 OPENAI_BASE_URL；兼容网关也写这里
-# 可选: NINGHARNESS_MODEL=gpt-4o-mini
-
 go run ./examples/chat /path/to/project "List files briefly."
 ```
 
-代码里：
-
-```go
-rt, err := defaults.Open(defaults.Opts{
-	Opts:    ningharness.Opts{DataDir: "./data", Root: root},
-	MCPAddr: "off",
-	Eino: eino.Opts{
-		APIKey:  "sk-...",
-		BaseURL: "https://api.openai.com/v1", // 空则读 NINGHARNESS_BASE_URL / OPENAI_BASE_URL
-		Model:   "gpt-4o-mini",
-	},
-})
-reply, err := rt.Chat(ctx, "List files briefly.")
-```
+（字段留空才会读 `NINGHARNESS_API_KEY` / `NINGHARNESS_BASE_URL` 等环境变量。）
 
 自备 Guest（不绑 Eino）：`WithoutEino: true` 后 `rt.SetGuest(myGuest)`。
 

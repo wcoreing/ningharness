@@ -78,30 +78,25 @@ rt, err := defaults.Open(defaults.Opts{
 // rt.MCPURL() → put in the url field above
 ```
 
-### Optional: Eino Guest (needs key + optional base URL)
+### Optional: Eino Guest (configure in the demo)
+
+Edit `einoCfg` at the top of [`examples/chat/main.go`](examples/chat/main.go):
+
+```go
+var einoCfg = eino.Opts{
+	APIKey:  "sk-...",                    // required
+	BaseURL: "https://api.openai.com/v1", // gateways go here
+	Model:   "gpt-4o-mini",
+}
+```
+
+Then:
 
 ```bash
-export NINGHARNESS_API_KEY=sk-...
-export NINGHARNESS_BASE_URL=https://api.openai.com/v1   # or OPENAI_BASE_URL; gateways go here
-# optional: NINGHARNESS_MODEL=gpt-4o-mini
-
 go run ./examples/chat /path/to/project "List files briefly."
 ```
 
-Or in code:
-
-```go
-rt, err := defaults.Open(defaults.Opts{
-	Opts:    ningharness.Opts{DataDir: "./data", Root: root},
-	MCPAddr: "off",
-	Eino: eino.Opts{
-		APIKey:  "sk-...",
-		BaseURL: "https://api.openai.com/v1", // empty → NINGHARNESS_BASE_URL / OPENAI_BASE_URL
-		Model:   "gpt-4o-mini",
-	},
-})
-reply, err := rt.Chat(ctx, "List files briefly.")
-```
+(Empty fields fall back to `NINGHARNESS_API_KEY` / `NINGHARNESS_BASE_URL` / ….)
 
 Bring your own Guest (no Eino): `WithoutEino: true`, then `rt.SetGuest(myGuest)`.
 
