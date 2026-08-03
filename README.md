@@ -5,81 +5,127 @@
 Owns world truth and the tool gate—not how the model thinks.  
 管世界真相与工具闸，不管模型怎么想。
 
-Products (e.g. AgentDesk) layer turn pipelines, UI, and Guests (wnai / Cursor / …) on top. This module can also embed in a CLI or another desktop shell.  
-产品（如 AgentDesk）在上面挂管道、UI、Guest（wnai / Cursor / …）；本库也可嵌入 CLI 或其它桌面壳。
-
 ## Positioning / 定位
 
 | In scope / 本库负责 | Out of scope / 本库不负责 |
 |---------------------|---------------------------|
-| Durable state in `desk.db` / desk.db 耐久状态 | Turn pipeline (turnpipe) / 回合管道 |
-| Workspace I/O and MCP core tools / 工作区写盘与 MCP 核工具 | Model loop / Eino / 模型循环 |
-| Skill on-disk contract, lesson memory / Skill 磁盘契约、lesson 经验 | Product Skill pack copy / 产品 Skill packs 文案 |
-| Job / Task scheduling and ledgers / Job·Task 调度与台账 | Git, pins, semantic recall, … / Git、pins、语义召回等产品扩展 |
+| Durable state in `store` (`desk.db`) / 台面库 | Product turnpipe / UI |
+| Workspace I/O + **ToolHost** MCP core tools | Product extensions (git, pins, …) |
+| Skill contract + Lesson memory | Product Skill packs copy |
+| Job / Task ledgers | — |
+| **Optional defaults**: MCP server + Eino Guest | You may replace or disable them |
 
-Tool truth lives in the host: Guests change the world only through ToolHost/MCP—no bypass writes to disk. Lessons require human ack before they count as owned experience—growth over silent automation.  
-工具真相在宿主：Guest 经 ToolHost/MCP 动世界，禁止旁路直写盘。经验（lesson）需人 ack 后才算认账——引导成长，而非无人值守代劳。
+Tool truth lives in the host: Guests change the world only through ToolHost—no bypass disk writes. Lessons need human ack.  
+工具真相在宿主：Guest 经 ToolHost 动世界。经验需人 ack。
 
 ## Glossary / 术语
 
-| Term | 含义 |
-|------|------|
-| **Task** | 单次 Agent 执行台账（history、steps、status）；一次模型回合或一次工具链执行的可追溯记录 |
-| **Job** | 队列中的调度单元；可含多步 prompt，由 Executor 驱动 Task |
-| **Skill** | 磁盘上的方法包契约（`system/skills/<id>/`）；流程与约束，非内置 packs |
-| **Lesson** | 经验条目（skill / project / personal 作用域）；人 ack 后才计入认账经验 |
+| Term | Meaning |
+|------|---------|
+| **Harness** | Facade: DB + Session + Job |
+| **ToolHost** | Tool gate + MCP core (register / arm / invoke) |
+| **Guest** | Model loop (default: Eino; swappable) |
+| **Task** | One execution ledger |
+| **Job** | Queue unit (may span multiple tasks) |
+| **Skill** | On-disk method pack contract |
+| **Lesson** | Experience entry (ack to own) |
 
 ## Packages / 模块
 
 ```text
-ningharness/
-  Open · Close · UseProject     Harness facade / Harness 门面
-  store                        single desk database / 唯一台面库
-  session · history · resource  working memory / 工作记忆
-  task · job                    run ledger / queue (Executor injected) / 台账与队列
-  lesson                        experience SSOT (skill|project|personal) / 经验 SSOT
-  skill                         system/skills contract (no builtin packs) / 磁盘契约（无内置 packs）
-  workspace                     workspace I/O (writetoken, pathsort, docwords) / 工作区
-  toolhost                      MCP: Arm/Invoke/HTTP + core tools / MCP 核
-  protocol                      shared event & tree types / 共享事件与树类型
+ningharness/           Harness Open/Close/UseProject
+  store                SQLite (file still named desk.db)
+  session history …    working memory
+  task job lesson skill
+  workspace toolhost protocol
+  guest/               Guest interface
+  guest/eino/          optional default Eino Guest
+  defaults/            wire ToolHost + MCP + Eino (opt-in)
 ```
 
-Core tools: files, session, skill contract, lesson, task, queue.  
-核工具：文件、session、skill 契约、lesson、task、queue。
+## Quick start — send one message / 发一句话
 
-Extensions (git, pins, image gen, builtin packs, …) are `Register`ed by the product.  
-扩展工具（git、pins、生图、内置 packs…）由产品 `Register`。
+Defaults include **MCP core tools** + **Eino Guest**. Turn either off if you do not want them.  
+默认自带 MCP 核工具与 Eino Guest；可不启用或自行替换。
 
-## Quick start / 快速使用
+```bash
+export NINGHARNESS_API_KEY=sk-...    # or OPENAI_API_KEY
+# optional: OPENAI_BASE_URL  NINGHARNESS_MODEL=gpt-4o-mini
+
+go run ./examples/chat /path/to/project "List files briefly."
+```
+
+Or in code:
 
 ```go
-h, err := ningharness.Open(ningharness.Opts{DataDir: "./data"})
-if err != nil {
-    log.Fatal(err)
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"ningharness"
+	"ningharness/defaults"
+)
+
+func main() {
+	rt, err := defaults.Open(defaults.Opts{
+		Opts: ningharness.Opts{
+			DataDir: "./data",           // desk.db directory
+			Root:    "/path/to/project", // project workspace
+		},
+		// MCPAddr: ""  → start MCP at 127.0.0.1:51020 with core tools
+		// MCPAddr: "off" → no MCP HTTP
+		// WithoutEino: true → no default Guest (bring your own)
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rt.Close()
+
+	fmt.Println("MCP endpoint:", rt.MCPURL()) // for Cursor etc.
+
+	reply, err := rt.Chat(context.Background(), "List the project tree in one short paragraph.")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(reply)
 }
-defer h.Close()
-
-if err := h.UseProject("/path/to/project"); err != nil {
-    log.Fatal(err)
-}
-
-h.Job.SetExecutor(func(ctx context.Context, j job.Job) (taskID string, err error) {
-    // caller's turn (pipeline / external agent)
-    // 调用方自己的一回合（管道 / 外置 Agent）
-    return taskID, nil
-})
-
-// optional MCP / 可选 MCP
-th := toolhost.New(workspace.New(), h.Session)
-th.Queue = h.Job
-toolhost.RegisterCoreTools(mcpServer, th)
-// product registers extensions, then Listen HTTP
-// 产品再 Register 扩展工具后 Listen HTTP
 ```
 
-## With AgentDesk / 与 AgentDesk
+### Opt out / 不用默认
 
-Local development / 开发期：
+```go
+// Core only — no MCP, no Eino
+h, _ := ningharness.Open(ningharness.Opts{DataDir: "./data", Root: root})
+defer h.Close()
+
+// Defaults but no Eino (keep MCP tools for external agents)
+rt, _ := defaults.Open(defaults.Opts{
+	Opts:        ningharness.Opts{DataDir: "./data", Root: root},
+	WithoutEino: true,
+})
+
+// Defaults but no MCP HTTP
+rt, _ := defaults.Open(defaults.Opts{
+	Opts:    ningharness.Opts{DataDir: "./data", Root: root},
+	MCPAddr: "off",
+})
+
+// Replace Guest
+rt.SetGuest(myGuest)
+```
+
+### What defaults wire / 默认装配了什么
+
+1. **ToolHost** + core tools: `list_tree`, `read_file`, `write_file`, `grep`, `edit`, session / skill / lesson / task / queue…  
+2. **MCP HTTP** (`/mcp`) — same tools for Cursor or other MCP clients  
+3. **Eino Guest** — ReAct over a subset of those tools via `ToolHost.Invoke`  
+
+Env: `NINGHARNESS_API_KEY` or `OPENAI_API_KEY`; optional `OPENAI_BASE_URL`, `NINGHARNESS_MODEL`.
+
+## With AgentDesk / 与 AgentDesk
 
 ```go
 // agentdesk/go.mod
@@ -87,8 +133,7 @@ require ningharness v0.0.0
 replace ningharness => ../ningharness
 ```
 
-Desk calls `ningharness.Open`, embeds `toolhost.ToolHost`, and keeps turnpipe plus product tools in-tree.  
-Desk：`ningharness.Open` + embed `toolhost.ToolHost`；turnpipe 与产品工具留在 Desk。
+Desk embeds `toolhost.ToolHost`, keeps turnpipe + product tools; may use its own Guest instead of `defaults`.
 
 ## Develop / 开发
 
@@ -96,11 +141,11 @@ Desk：`ningharness.Open` + embed `toolhost.ToolHost`；turnpipe 与产品工具
 go test ./...
 ```
 
-Requires Go 1.25+. / 需要 Go 1.25+。
+Requires Go 1.25+.
 
 ---
 
 **GitHub About**
 
-> SQLite-backed agent host: desk.db, workspace, MCP core tools, skill/lesson contracts—not the model loop or product UI.  
-> 带 SQLite 的 Agent 宿主地基：desk.db、工作区、MCP 核工具、Skill/经验契约；不管模型循环与产品 UI。
+> SQLite-backed agent host: desk.db, ToolHost/MCP core tools, skill/lesson; optional Eino Guest.  
+> 带 SQLite 的 Agent 宿主地基：台面库、ToolHost/MCP 核工具、Skill/经验；可选默认 Eino Guest。
