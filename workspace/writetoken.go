@@ -1,5 +1,5 @@
 // Package writetoken 关联本端写盘与 fsnotify（借鉴稿舍 platform/writetoken）。
-package writetoken
+package workspace
 
 import (
 	"path/filepath"

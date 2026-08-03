@@ -1,4 +1,4 @@
-package hub
+package toolhost
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ import (
 
 const ServerVersion = "0.1.0"
 
-type Hub struct {
+type ToolHost struct {
 	mu            sync.Mutex
 	ws            *workspace.Service
 	sess          *session.Store
@@ -33,56 +33,56 @@ type Hub struct {
 	OnWriteBytes  func(relPath string, data []byte, writeID string) error
 }
 
-func NewHub(ws *workspace.Service, sess *session.Store) *Hub {
+func New(ws *workspace.Service, sess *session.Store) *ToolHost {
 	if ws == nil {
 		ws = workspace.New()
 	}
 	if sess == nil {
 		sess = session.NewStore()
 	}
-	return &Hub{ws: ws, sess: sess}
+	return &ToolHost{ws: ws, sess: sess}
 }
 
-func (h *Hub) Workspace() *workspace.Service { return h.ws }
-func (h *Hub) Session() *session.Store       { return h.sess }
+func (h *ToolHost) Workspace() *workspace.Service { return h.ws }
+func (h *ToolHost) Session() *session.Store       { return h.sess }
 
-func (h *Hub) SetFocus(relPath string) {
+func (h *ToolHost) SetFocus(relPath string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.focusRel = strings.TrimSpace(relPath)
 }
 
-func (h *Hub) Focus() string {
+func (h *ToolHost) Focus() string {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	return h.focusRel
 }
 
-func (h *Hub) SetContentTabsBrief(brief string) {
+func (h *ToolHost) SetContentTabsBrief(brief string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.contentTabs = strings.TrimSpace(brief)
 }
 
-func (h *Hub) ContentTabsBrief() string {
+func (h *ToolHost) ContentTabsBrief() string {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	return h.contentTabs
 }
 
-func (h *Hub) SetTreeSelectionBrief(brief string) {
+func (h *ToolHost) SetTreeSelectionBrief(brief string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.treeSelection = strings.TrimSpace(brief)
 }
 
-func (h *Hub) TreeSelectionBrief() string {
+func (h *ToolHost) TreeSelectionBrief() string {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	return h.treeSelection
 }
 
-func (h *Hub) ArmTurnInterceptor(purpose string, allow map[string]bool) {
+func (h *ToolHost) ArmTurnInterceptor(purpose string, allow map[string]bool) {
 	if h == nil {
 		return
 	}
@@ -92,7 +92,7 @@ func (h *Hub) ArmTurnInterceptor(purpose string, allow map[string]bool) {
 	h.turnAllow = allow
 }
 
-func (h *Hub) DisarmTurnInterceptor() {
+func (h *ToolHost) DisarmTurnInterceptor() {
 	if h == nil {
 		return
 	}
@@ -105,7 +105,7 @@ func (h *Hub) DisarmTurnInterceptor() {
 	h.turnParentTask = ""
 }
 
-func (h *Hub) SetTurnContext(taskID, sessionKey, parentTaskID string) {
+func (h *ToolHost) SetTurnContext(taskID, sessionKey, parentTaskID string) {
 	if h == nil {
 		return
 	}
@@ -116,7 +116,7 @@ func (h *Hub) SetTurnContext(taskID, sessionKey, parentTaskID string) {
 	h.turnParentTask = strings.TrimSpace(parentTaskID)
 }
 
-func (h *Hub) TurnContext() (taskID, sessionKey, parentTaskID string) {
+func (h *ToolHost) TurnContext() (taskID, sessionKey, parentTaskID string) {
 	if h == nil {
 		return "", "", ""
 	}
@@ -125,7 +125,7 @@ func (h *Hub) TurnContext() (taskID, sessionKey, parentTaskID string) {
 	return h.turnTaskID, h.turnSessionKey, h.turnParentTask
 }
 
-func (h *Hub) TurnPolicy() string {
+func (h *ToolHost) TurnPolicy() string {
 	if h == nil {
 		return ""
 	}
@@ -134,11 +134,11 @@ func (h *Hub) TurnPolicy() string {
 	return h.turnPurpose
 }
 
-func (h *Hub) CheckToolInterceptor(toolName string) error {
+func (h *ToolHost) CheckToolInterceptor(toolName string) error {
 	return h.checkToolInterceptor(toolName)
 }
 
-func (h *Hub) checkToolInterceptor(toolName string) error {
+func (h *ToolHost) checkToolInterceptor(toolName string) error {
 	h.mu.Lock()
 	allow := h.turnAllow
 	purpose := h.turnPurpose
@@ -156,7 +156,7 @@ func (h *Hub) checkToolInterceptor(toolName string) error {
 	return fmt.Errorf("tool %s not allowed in this mode (purpose=%s)", name, purpose)
 }
 
-func (h *Hub) pid() string {
+func (h *ToolHost) pid() string {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if p := h.ws.Current(); p != nil {
@@ -165,7 +165,7 @@ func (h *Hub) pid() string {
 	return ""
 }
 
-func (h *Hub) activeSessionKey() string {
+func (h *ToolHost) activeSessionKey() string {
 	root, err := h.root()
 	if err != nil {
 		return session.MainSessionID
@@ -181,7 +181,7 @@ func (h *Hub) activeSessionKey() string {
 	return session.MainSessionID
 }
 
-func (h *Hub) AnnounceSidebarAssistant(text string) {
+func (h *ToolHost) AnnounceSidebarAssistant(text string) {
 	text = strings.TrimSpace(text)
 	if text == "" || h == nil || h.sess == nil {
 		return
@@ -198,21 +198,21 @@ func (h *Hub) AnnounceSidebarAssistant(text string) {
 	}
 }
 
-func (h *Hub) AnnounceQueueEnqueued(job deskqueue.Job) {
+func (h *ToolHost) AnnounceQueueEnqueued(job deskqueue.Job) {
 	if !session.IsHiddenSession(job.SessionKey) {
 		return
 	}
 	h.AnnounceSidebarAssistant(deskqueue.FormatSidebarEnqueue(job))
 }
 
-func (h *Hub) AnnounceQueueProgress(job deskqueue.Job, kind deskqueue.ProgressKind) {
+func (h *ToolHost) AnnounceQueueProgress(job deskqueue.Job, kind deskqueue.ProgressKind) {
 	if !session.IsHiddenSession(job.SessionKey) {
 		return
 	}
 	h.AnnounceSidebarAssistant(deskqueue.FormatSidebarProgress(job, kind))
 }
 
-func (h *Hub) pathExistsForAgent(rel string) bool {
+func (h *ToolHost) pathExistsForAgent(rel string) bool {
 	rel = strings.TrimSpace(strings.ReplaceAll(rel, "\\", "/"))
 	if rel == "" {
 		return false

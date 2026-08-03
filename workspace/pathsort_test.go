@@ -1,4 +1,4 @@
-package pathsort
+package workspace
 
 import (
 	"sort"

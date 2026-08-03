@@ -1,4 +1,4 @@
-package docwords
+package workspace
 
 import (
 	"regexp"

@@ -1,5 +1,5 @@
 // Package pathsort 文件名/相对路径排序（第N章章号 + 数字自然序）。
-package pathsort
+package workspace
 
 import (
 	"path/filepath"

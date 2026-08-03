@@ -3,16 +3,16 @@ package workspace
 import (
 	"sort"
 
-	"ningharness/contract"
-	"ningharness/pathsort"
+	"ningharness/protocol"
+	
 )
 
-func sortTreeChildren(nodes []contract.TreeNode) {
+func sortTreeChildren(nodes []protocol.TreeNode) {
 	sort.Slice(nodes, func(i, j int) bool {
 		ni, nj := nodes[i], nodes[j]
 		if ni.IsDir != nj.IsDir {
 			return ni.IsDir
 		}
-		return pathsort.CompareName(ni.Name, nj.Name) < 0
+		return CompareName(ni.Name, nj.Name) < 0
 	})
 }

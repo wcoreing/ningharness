@@ -1,6 +1,6 @@
 // write_file 参数解析：大段正文勿依赖脆弱 JSON。
 // 支持纯文本（首行路径 + 空行 + 正文）与 JSON；JSON 失败时尝试引号/换行修复与截断恢复。
-package toolargs
+package toolhost
 
 import (
 	"encoding/json"

@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	"ningharness/contract"
+	"ningharness/protocol"
 )
 
 func TestOpenListReadWrite(t *testing.T) {
@@ -26,7 +26,7 @@ func TestOpenListReadWrite(t *testing.T) {
 	if len(listing.Nodes) == 0 {
 		t.Fatal("expected non-empty tree")
 	}
-	var hello *contract.TreeNode
+	var hello *protocol.TreeNode
 	for i := range listing.Nodes {
 		if listing.Nodes[i].Name == "hello.md" {
 			hello = &listing.Nodes[i]

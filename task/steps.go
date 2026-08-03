@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"ningharness/history"
-	"ningharness/tooloutcome"
 )
 
 // StepDiffLine 写盘对照行（DTO；正文在 resource kind=diff）。
@@ -85,7 +84,7 @@ func StepsFromHistory(msgs []history.Msg) []Step {
 		case "tool":
 			callID := strings.TrimSpace(m.ToolCallID)
 			text := m.Content
-			errish := tooloutcome.LooksFailed(text)
+			errish := LooksFailed(text)
 			if idx, ok := openByCall[callID]; ok {
 				cur := out[idx]
 				cur.Result = text

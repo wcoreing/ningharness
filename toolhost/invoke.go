@@ -1,4 +1,4 @@
-package hub
+package toolhost
 
 import (
 	"context"
@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"strings"
 
-	"ningharness/toolargs"
+	
 
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
-func (h *Hub) CallNamedTool(ctx context.Context, name string, args map[string]any) (*mcp.CallToolResult, error) {
+func (h *ToolHost) CallNamedTool(ctx context.Context, name string, args map[string]any) (*mcp.CallToolResult, error) {
 	if h == nil {
 		return nil, fmt.Errorf("hub nil")
 	}
@@ -22,7 +22,7 @@ func (h *Hub) CallNamedTool(ctx context.Context, name string, args map[string]an
 	if args == nil {
 		args = map[string]any{}
 	}
-	args = toolargs.FlattenArguments(args)
+	args = FlattenArguments(args)
 	req := mcp.CallToolRequest{}
 	req.Params.Name = name
 	req.Params.Arguments = args
@@ -103,16 +103,16 @@ func (h *Hub) CallNamedTool(ctx context.Context, name string, args map[string]an
 	return res, nil
 }
 
-func (h *Hub) Invoke(ctx context.Context, name, argsJSON string) (string, error) {
+func (h *ToolHost) Invoke(ctx context.Context, name, argsJSON string) (string, error) {
 	if h == nil {
 		return "", fmt.Errorf("hub nil")
 	}
 	name = strings.TrimSpace(name)
 	args := map[string]any{}
 	if s := strings.TrimSpace(argsJSON); s != "" && s != "null" {
-		s = toolargs.UnwrapArgumentsJSON(s)
+		s = UnwrapArgumentsJSON(s)
 		if name == "write_file" {
-			path, content, err := toolargs.ParseWriteFile(s)
+			path, content, err := ParseWriteFile(s)
 			if err != nil {
 				return "", err
 			}

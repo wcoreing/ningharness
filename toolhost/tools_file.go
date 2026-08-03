@@ -1,4 +1,4 @@
-package hub
+package toolhost
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
-func (h *Hub) toolListTree(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *ToolHost) toolListTree(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	cr, err := h.contentRoot()
 	if err != nil {
 		return toolErr("list_tree", err)
@@ -34,7 +34,7 @@ func (h *Hub) toolListTree(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallT
 	return mcp.NewToolResultText(string(b)), nil
 }
 
-func (h *Hub) toolReadFile(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *ToolHost) toolReadFile(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if _, err := h.contentRoot(); err != nil {
 		return toolErr("read_file", err)
 	}
@@ -49,7 +49,7 @@ func (h *Hub) toolReadFile(_ context.Context, req mcp.CallToolRequest) (*mcp.Cal
 	return mcp.NewToolResultText(body), nil
 }
 
-func (h *Hub) toolWriteFile(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *ToolHost) toolWriteFile(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if _, err := h.root(); err != nil {
 		return toolErr("write_file", err)
 	}
@@ -70,7 +70,7 @@ func (h *Hub) toolWriteFile(ctx context.Context, req mcp.CallToolRequest) (*mcp.
 	return mcp.NewToolResultText(msg), nil
 }
 
-func (h *Hub) toolMkdir(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *ToolHost) toolMkdir(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if _, err := h.contentRoot(); err != nil {
 		return toolErr("mkdir", err)
 	}
@@ -87,7 +87,7 @@ func (h *Hub) toolMkdir(_ context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	return mcp.NewToolResultText(fmt.Sprintf("mkdir %s (writeId=%s)", rel, wid)), nil
 }
 
-func (h *Hub) toolCreateFile(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *ToolHost) toolCreateFile(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if _, err := h.contentRoot(); err != nil {
 		return toolErr("create_file", err)
 	}
@@ -104,7 +104,7 @@ func (h *Hub) toolCreateFile(_ context.Context, req mcp.CallToolRequest) (*mcp.C
 	return mcp.NewToolResultText(fmt.Sprintf("created %s (writeId=%s)", rel, wid)), nil
 }
 
-func (h *Hub) toolRenamePath(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *ToolHost) toolRenamePath(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if _, err := h.root(); err != nil {
 		return toolErr("rename_path", err)
 	}
@@ -126,7 +126,7 @@ func (h *Hub) toolRenamePath(_ context.Context, req mcp.CallToolRequest) (*mcp.C
 	return mutationJSON(res), nil
 }
 
-func (h *Hub) toolMovePath(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *ToolHost) toolMovePath(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if _, err := h.root(); err != nil {
 		return toolErr("move_path", err)
 	}
@@ -148,7 +148,7 @@ func (h *Hub) toolMovePath(_ context.Context, req mcp.CallToolRequest) (*mcp.Cal
 	return mutationJSON(res), nil
 }
 
-func (h *Hub) toolCopyPath(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *ToolHost) toolCopyPath(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if _, err := h.root(); err != nil {
 		return toolErr("copy_path", err)
 	}
@@ -169,7 +169,7 @@ func (h *Hub) toolCopyPath(_ context.Context, req mcp.CallToolRequest) (*mcp.Cal
 	return mutationJSON(res), nil
 }
 
-func (h *Hub) toolDeletePath(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *ToolHost) toolDeletePath(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if _, err := h.root(); err != nil {
 		return toolErr("delete_path", err)
 	}
@@ -186,7 +186,7 @@ func (h *Hub) toolDeletePath(_ context.Context, req mcp.CallToolRequest) (*mcp.C
 	return mcp.NewToolResultText(fmt.Sprintf("deleted %s (writeId=%s)", rel, wid)), nil
 }
 
-func (h *Hub) toolBatchDeletePaths(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *ToolHost) toolBatchDeletePaths(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if _, err := h.root(); err != nil {
 		return toolErr("batch_delete_paths", err)
 	}
@@ -200,7 +200,7 @@ func (h *Hub) toolBatchDeletePaths(_ context.Context, req mcp.CallToolRequest) (
 	return mutationJSON(res), nil
 }
 
-func (h *Hub) toolBatchMovePaths(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *ToolHost) toolBatchMovePaths(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if _, err := h.root(); err != nil {
 		return toolErr("batch_move_paths", err)
 	}

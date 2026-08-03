@@ -17,22 +17,31 @@ Products (e.g. AgentDesk) layer turn pipelines, UI, and Guests (wnai / Cursor / 
 | Skill on-disk contract, lesson memory / Skill 磁盘契约、lesson 经验 | Product Skill pack copy / 产品 Skill packs 文案 |
 | Job / Task scheduling and ledgers / Job·Task 调度与台账 | Git, pins, semantic recall, … / Git、pins、语义召回等产品扩展 |
 
-Tool truth lives in the host: Guests change the world only through Hub/MCP—no bypass writes to disk. Lessons require human ack before they count as owned experience—growth over silent automation.  
-工具真相在宿主：Guest 经 Hub/MCP 动世界，禁止旁路直写盘。经验（lesson）需人 ack 后才算认账——引导成长，而非无人值守代劳。
+Tool truth lives in the host: Guests change the world only through ToolHost/MCP—no bypass writes to disk. Lessons require human ack before they count as owned experience—growth over silent automation.  
+工具真相在宿主：Guest 经 ToolHost/MCP 动世界，禁止旁路直写盘。经验（lesson）需人 ack 后才算认账——引导成长，而非无人值守代劳。
+
+## Glossary / 术语
+
+| Term | 含义 |
+|------|------|
+| **Task** | 单次 Agent 执行台账（history、steps、status）；一次模型回合或一次工具链执行的可追溯记录 |
+| **Job** | 队列中的调度单元；可含多步 prompt，由 Executor 驱动 Task |
+| **Skill** | 磁盘上的方法包契约（`system/skills/<id>/`）；流程与约束，非内置 packs |
+| **Lesson** | 经验条目（skill / project / personal 作用域）；人 ack 后才计入认账经验 |
 
 ## Packages / 模块
 
 ```text
 ningharness/
-  Open · Close · UseProject     facade / 门面
+  Open · Close · UseProject     Harness facade / Harness 门面
   deskdb                        single desk database / 唯一台面库
   session · history · resource  working memory / 工作记忆
   task · job                    run ledger / queue (Executor injected) / 台账与队列
   lesson                        experience SSOT (skill|project|personal) / 经验 SSOT
   skill                         system/skills contract (no builtin packs) / 磁盘契约（无内置 packs）
-  workspace · writetoken · …    workspace I/O / 工作区
-  hub                           MCP: Arm/Invoke/HTTP + core tools / MCP 核
-  contract · toolargs · …       shared types and arg parsing / 共享类型与参数
+  workspace                     workspace I/O (writetoken, pathsort, docwords) / 工作区
+  toolhost                      MCP: Arm/Invoke/HTTP + core tools / MCP 核
+  protocol                      shared event & tree types / 共享事件与树类型
 ```
 
 Core tools: files, session, skill contract, lesson, task, queue.  
@@ -61,9 +70,9 @@ h.Job.SetExecutor(func(ctx context.Context, j job.Job) (taskID string, err error
 })
 
 // optional MCP / 可选 MCP
-hub := hub.NewHub(workspace.New(), h.Session)
-hub.Queue = h.Job
-hub.RegisterCoreTools(mcpServer)
+th := toolhost.New(workspace.New(), h.Session)
+th.Queue = h.Job
+toolhost.RegisterCoreTools(mcpServer, th)
 // product registers extensions, then Listen HTTP
 // 产品再 Register 扩展工具后 Listen HTTP
 ```
@@ -78,8 +87,8 @@ require ningharness v0.0.0
 replace ningharness => ../ningharness
 ```
 
-Desk calls `ningharness.Open`, embeds `hub.Hub`, and keeps turnpipe plus product tools in-tree.  
-Desk：`ningharness.Open` + embed `hub.Hub`；turnpipe 与产品工具留在 Desk。
+Desk calls `ningharness.Open`, embeds `toolhost.ToolHost`, and keeps turnpipe plus product tools in-tree.  
+Desk：`ningharness.Open` + embed `toolhost.ToolHost`；turnpipe 与产品工具留在 Desk。
 
 ## Develop / 开发
 

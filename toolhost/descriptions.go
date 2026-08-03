@@ -1,10 +1,10 @@
-package hub
+package toolhost
 
 import (
 	"fmt"
 	"strings"
 
-	"ningharness/docwords"
+	"ningharness/workspace"
 )
 
 const WriteFileToolDesc = "整文件写入项目相对路径。" +
@@ -31,7 +31,7 @@ func FormatWriteOK(rel, content, writeID string) string {
 }
 
 func formatWriteOK(rel, content, writeID string) string {
-	n := docwords.Count(content)
+	n := workspace.Count(content)
 	msg := fmt.Sprintf("Successfully wrote '%s'（%d 字）", rel, n)
 	if wid := strings.TrimSpace(writeID); wid != "" {
 		msg += " writeId=" + wid

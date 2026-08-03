@@ -1,4 +1,4 @@
-package hub
+package toolhost
 
 import (
 	"crypto/rand"
@@ -14,15 +14,15 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
-func (h *Hub) Pid() string { return h.pid() }
+func (h *ToolHost) Pid() string { return h.pid() }
 
-func (h *Hub) MCPWriteID(prefix string) string { return h.mcpWriteID(prefix) }
+func (h *ToolHost) MCPWriteID(prefix string) string { return h.mcpWriteID(prefix) }
 
-func (h *Hub) NotifyPathsChanged(writeID string, paths []string, wordCounts map[string]int) {
+func (h *ToolHost) NotifyPathsChanged(writeID string, paths []string, wordCounts map[string]int) {
 	h.notifyPathsChanged(writeID, paths, wordCounts)
 }
 
-func (h *Hub) WriteAgentFile(rel, content, writeID string) error {
+func (h *ToolHost) WriteAgentFile(rel, content, writeID string) error {
 	return h.writeAgentFile(rel, content, writeID)
 }
 
@@ -34,7 +34,7 @@ func toolErr(name string, err error) (*mcp.CallToolResult, error) {
 	return ToolErr(name, err)
 }
 
-func (h *Hub) mcpWriteID(prefix string) string {
+func (h *ToolHost) mcpWriteID(prefix string) string {
 	p := strings.TrimSpace(prefix)
 	if p == "" {
 		p = "mcp"
@@ -44,7 +44,7 @@ func (h *Hub) mcpWriteID(prefix string) string {
 	return fmt.Sprintf("%s-%d-%s", p, time.Now().UnixMilli(), hex.EncodeToString(b[:]))
 }
 
-func (h *Hub) writeAgentFile(rel, content, writeID string) error {
+func (h *ToolHost) writeAgentFile(rel, content, writeID string) error {
 	rel = filepath.ToSlash(strings.TrimSpace(rel))
 	if h.OnWriteWorktree != nil {
 		return h.OnWriteWorktree(rel, content, writeID)
@@ -52,7 +52,7 @@ func (h *Hub) writeAgentFile(rel, content, writeID string) error {
 	return h.ws.WriteText(rel, content, writeID)
 }
 
-func (h *Hub) notifyPathsChanged(writeID string, paths []string, wordCounts map[string]int) {
+func (h *ToolHost) notifyPathsChanged(writeID string, paths []string, wordCounts map[string]int) {
 	if h == nil || h.OnPathsChanged == nil || len(paths) == 0 {
 		return
 	}
@@ -105,7 +105,7 @@ func mutationJSON(res workspace.MutationResult) *mcp.CallToolResult {
 	return mcp.NewToolResultText(string(b))
 }
 
-func (h *Hub) remapFileGitAfterMove(res workspace.MutationResult) {
+func (h *ToolHost) remapFileGitAfterMove(res workspace.MutationResult) {
 	if h == nil || h.OnPathsMoved == nil || len(res.MovedTo) == 0 {
 		return
 	}

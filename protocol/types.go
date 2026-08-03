@@ -1,4 +1,4 @@
-package contract
+package protocol
 
 // TreeNode 工作区树节点（与稿舍 WorkspaceTreeNode 契约对齐，便于后搬）。
 type TreeNode struct {

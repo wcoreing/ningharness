@@ -1,4 +1,4 @@
-package hub
+package toolhost
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
-func (h *Hub) toolListTasks(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *ToolHost) toolListTasks(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	root, err := h.root()
 	if err != nil {
 		return toolErr("list_tasks", err)
@@ -38,7 +38,7 @@ func (h *Hub) toolListTasks(_ context.Context, req mcp.CallToolRequest) (*mcp.Ca
 	return mcp.NewToolResultText(string(b)), nil
 }
 
-func (h *Hub) toolGetTaskSummary(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *ToolHost) toolGetTaskSummary(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	root, err := h.root()
 	if err != nil {
 		return toolErr("get_task_summary", err)

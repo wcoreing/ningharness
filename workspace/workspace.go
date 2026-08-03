@@ -8,9 +8,9 @@ import (
 	"strings"
 	"sync"
 
-	"ningharness/contract"
-	"ningharness/docwords"
-	"ningharness/writetoken"
+	"ningharness/protocol"
+	
+	
 )
 
 // Project 已打开的本地目录项目。
@@ -21,7 +21,7 @@ type Project struct {
 
 // TreeListing ListTree 结果。
 type TreeListing struct {
-	Nodes     []contract.TreeNode `json:"nodes"`
+	Nodes     []protocol.TreeNode `json:"nodes"`
 	Truncated bool                `json:"truncated"` // 保留字段；恒为 false（已取消截断）
 }
 
@@ -87,7 +87,7 @@ func ListTreeAt(absRoot string) (TreeListing, error) {
 	if err != nil {
 		return TreeListing{}, err
 	}
-	out := make([]contract.TreeNode, 0, len(entries))
+	out := make([]protocol.TreeNode, 0, len(entries))
 	for _, e := range entries {
 		name := e.Name()
 		if shouldSkip(name) {
@@ -103,9 +103,9 @@ func ListTreeAt(absRoot string) (TreeListing, error) {
 	return TreeListing{Nodes: out}, nil
 }
 
-func buildNode(root, rel string, isDir bool) (contract.TreeNode, error) {
+func buildNode(root, rel string, isDir bool) (protocol.TreeNode, error) {
 	name := filepath.Base(rel)
-	n := contract.TreeNode{
+	n := protocol.TreeNode{
 		RelPath: filepath.ToSlash(rel),
 		Name:    name,
 		IsDir:   isDir,
@@ -162,7 +162,7 @@ func fileWordCount(abs, rel string) int {
 			return 0
 		}
 	}
-	return docwords.Count(string(b))
+	return Count(string(b))
 }
 
 func shouldSkip(name string) bool {
@@ -345,7 +345,7 @@ func (s *Service) WriteBytes(relPath string, data []byte, writeID string) error 
 	if p != nil && strings.TrimSpace(writeID) != "" {
 		rel, err := filepath.Rel(p.Root, abs)
 		if err == nil {
-			writetoken.Register(p.ID, writeID, []string{filepath.ToSlash(rel)})
+			Register(p.ID, writeID, []string{filepath.ToSlash(rel)})
 		}
 	}
 	return os.WriteFile(abs, data, 0o644)

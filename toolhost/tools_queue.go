@@ -1,4 +1,4 @@
-package hub
+package toolhost
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
-func (h *Hub) toolEnqueueAgentTurn(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *ToolHost) toolEnqueueAgentTurn(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	q, err := h.requireQueue()
 	if err != nil {
 		return toolErr("enqueue_agent_turn", err)
@@ -40,7 +40,7 @@ func (h *Hub) toolEnqueueAgentTurn(_ context.Context, req mcp.CallToolRequest) (
 	return mcp.NewToolResultText(deskqueue.FormatEnqueueOK(task)), nil
 }
 
-func (h *Hub) toolEnqueueAgentTurnsForPaths(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *ToolHost) toolEnqueueAgentTurnsForPaths(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	q, err := h.requireQueue()
 	if err != nil {
 		return toolErr("enqueue_agent_turns_for_paths", err)
@@ -66,7 +66,7 @@ func (h *Hub) toolEnqueueAgentTurnsForPaths(_ context.Context, req mcp.CallToolR
 	return mcp.NewToolResultText(msg), nil
 }
 
-func (h *Hub) toolListQueue(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *ToolHost) toolListQueue(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	q, err := h.requireQueue()
 	if err != nil {
 		return toolErr("list_queue", err)
@@ -75,7 +75,7 @@ func (h *Hub) toolListQueue(_ context.Context, _ mcp.CallToolRequest) (*mcp.Call
 	return mcp.NewToolResultText(string(raw)), nil
 }
 
-func (h *Hub) toolCancelQueueTask(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *ToolHost) toolCancelQueueTask(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	q, err := h.requireQueue()
 	if err != nil {
 		return toolErr("cancel_queue_task", err)
@@ -90,7 +90,7 @@ func (h *Hub) toolCancelQueueTask(_ context.Context, req mcp.CallToolRequest) (*
 	return mcp.NewToolResultText("cancelled " + strings.TrimSpace(id)), nil
 }
 
-func (h *Hub) toolSetQueuePaused(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *ToolHost) toolSetQueuePaused(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	q, err := h.requireQueue()
 	if err != nil {
 		return toolErr("set_queue_paused", err)
@@ -102,7 +102,7 @@ func (h *Hub) toolSetQueuePaused(_ context.Context, req mcp.CallToolRequest) (*m
 	return mcp.NewToolResultText(fmt.Sprintf("paused=%v", paused)), nil
 }
 
-func (h *Hub) requireQueue() (*deskqueue.Manager, error) {
+func (h *ToolHost) requireQueue() (*deskqueue.Manager, error) {
 	if h == nil || h.Queue == nil {
 		return nil, fmt.Errorf("queue requires AgentDesk App（执行器未挂载）")
 	}

@@ -1,4 +1,4 @@
-package toolargs
+package toolhost
 
 import (
 	"encoding/json"

@@ -1,4 +1,4 @@
-package writetoken
+package workspace
 
 import "testing"
 

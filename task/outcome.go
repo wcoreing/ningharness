@@ -1,6 +1,6 @@
 // Package tooloutcome 工具回执语义：失败 / 已落盘 / 已入队（未落盘）。
 // 与前端 toolResultLooksFailed / CONSTITUTION 关键回执前缀对齐；勿子串匹配裸 "error"（会误伤 pauseOnError）。
-package tooloutcome
+package task
 
 import "strings"
 

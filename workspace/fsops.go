@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"ningharness/writetoken"
+	
 )
 
 // MutationResult 单条/批量路径操作结果。
@@ -30,7 +30,7 @@ func (s *Service) registerWrite(p *Project, writeID string, rels []string) {
 		}
 	}
 	if len(clean) > 0 {
-		writetoken.Register(p.ID, writeID, clean)
+		Register(p.ID, writeID, clean)
 	}
 }
 

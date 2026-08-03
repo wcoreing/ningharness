@@ -1,11 +1,11 @@
-package hub
+package toolhost
 
 import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
 
-func RegisterCoreTools(s *server.MCPServer, h *Hub) {
+func RegisterCoreTools(s *server.MCPServer, h *ToolHost) {
 	s.AddTool(mcp.NewTool("list_tree",
 		mcp.WithDescription("列出项目文件树（跳过 .git / node_modules 等）。快照已含路径索引；需要刷新或看 skills 内部时再用。"),
 	), h.toolListTree)
@@ -198,7 +198,7 @@ func RegisterCoreTools(s *server.MCPServer, h *Hub) {
 	), h.toolSetQueuePaused)
 }
 
-func NewMCPServer(h *Hub, name, version, instructions string) *server.MCPServer {
+func NewMCPServer(h *ToolHost, name, version, instructions string) *server.MCPServer {
 	opts := []server.ServerOption{server.WithToolCapabilities(true)}
 	if instructions != "" {
 		opts = append(opts, server.WithInstructions(instructions))

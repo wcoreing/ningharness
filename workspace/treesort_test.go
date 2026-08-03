@@ -3,11 +3,11 @@ package workspace
 import (
 	"testing"
 
-	"ningharness/contract"
+	"ningharness/protocol"
 )
 
 func TestSortTreeChildrenDirsFirst(t *testing.T) {
-	nodes := []contract.TreeNode{
+	nodes := []protocol.TreeNode{
 		{Name: "第一章.md", RelPath: "章节/第一章.md"},
 		{Name: "章节", RelPath: "章节", IsDir: true},
 		{Name: "设定.md", RelPath: "设定.md"},

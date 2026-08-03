@@ -1,5 +1,5 @@
 // Package ningharness 带 SQLite 的 Agent 宿主地基。
-// 含 session/history/task/job/lesson/skill 与 hub 核工具；不含 turnpipe、Eino、产品 packs。
+// 含 session/history/task/job/lesson/skill 与 toolhost 核工具；不含 turnpipe、Eino、产品 packs。
 package ningharness
 
 import (
@@ -20,8 +20,8 @@ type Opts struct {
 	Root string
 }
 
-// H 地基句柄。
-type H struct {
+// Harness 地基句柄。
+type Harness struct {
 	DB      *sql.DB
 	Session *session.Store
 	Job     *job.Manager
@@ -30,7 +30,7 @@ type H struct {
 }
 
 // Open 打开台面库并装配 Session / Job（Job.Executor 须由调用方 SetExecutor）。
-func Open(opts Opts) (*H, error) {
+func Open(opts Opts) (*Harness, error) {
 	var (
 		db  *sql.DB
 		err error
@@ -44,7 +44,7 @@ func Open(opts Opts) (*H, error) {
 	if err != nil {
 		return nil, err
 	}
-	h := &H{
+	h := &Harness{
 		DB:      db,
 		Session: session.NewStore(),
 		Job:     job.New(nil, nil),
@@ -60,7 +60,7 @@ func Open(opts Opts) (*H, error) {
 }
 
 // Close 关闭台面库连接缓存（进程内全局 cache）。
-func (h *H) Close() error {
+func (h *Harness) Close() error {
 	if h == nil {
 		return nil
 	}
@@ -73,7 +73,7 @@ func (h *H) Close() error {
 }
 
 // Root 当前项目根。
-func (h *H) Root() string {
+func (h *Harness) Root() string {
 	if h == nil {
 		return ""
 	}
@@ -81,7 +81,7 @@ func (h *H) Root() string {
 }
 
 // UseProject 登记项目、打开项目迁移，并绑定 Job 到该根。
-func (h *H) UseProject(root string) error {
+func (h *Harness) UseProject(root string) error {
 	if h == nil {
 		return fmt.Errorf("ningharness: nil")
 	}

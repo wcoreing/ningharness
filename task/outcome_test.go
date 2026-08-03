@@ -1,4 +1,4 @@
-package tooloutcome
+package task
 
 import "testing"
 
