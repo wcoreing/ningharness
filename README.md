@@ -46,21 +46,44 @@ ningharness/           Harness Open/Close/UseProject
 
 ## Quick start
 
-Defaults include **MCP core tools** + **Eino Guest**. Turn either off if you do not want them.
+MCP and Guest are **independent**. MCP alone needs **no API key**. A key is only for the optional Eino Guest.
 
-### MCP only
+### MCP only (no Guest, no key)
 
 ```bash
 go run ./examples/mcp /path/to/project
-# prints MCP URL (default 127.0.0.1:51020; if busy, picks a free port)
+# prints MCP URL + a Cursor config snippet
 # override: NINGHARNESS_MCP_ADDR=127.0.0.1:51021
 ```
 
-### Send one message (Eino Guest)
+Paste the printed URL into Cursor (`~/.cursor/mcp.json` or project `.cursor/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "ningharness": {
+      "url": "http://127.0.0.1:51020/mcp"
+    }
+  }
+}
+```
+
+Use the URL from the terminal (port may change if 51020 is busy). Cursor uses its own model key; this process needs none.
+
+```go
+rt, err := defaults.Open(defaults.Opts{
+	Opts:        ningharness.Opts{DataDir: "./data", Root: root},
+	WithoutEino: true, // no Guest, no API key
+})
+// rt.MCPURL() → put in the url field above
+```
+
+### Optional: Eino Guest (needs key + optional base URL)
 
 ```bash
-export NINGHARNESS_API_KEY=sk-...    # or OPENAI_API_KEY
-# optional: OPENAI_BASE_URL  NINGHARNESS_MODEL=gpt-4o-mini
+export NINGHARNESS_API_KEY=sk-...
+export NINGHARNESS_BASE_URL=https://api.openai.com/v1   # or OPENAI_BASE_URL; gateways go here
+# optional: NINGHARNESS_MODEL=gpt-4o-mini
 
 go run ./examples/chat /path/to/project "List files briefly."
 ```
@@ -68,41 +91,19 @@ go run ./examples/chat /path/to/project "List files briefly."
 Or in code:
 
 ```go
-package main
-
-import (
-	"context"
-	"fmt"
-	"log"
-
-	"ningharness"
-	"ningharness/defaults"
-)
-
-func main() {
-	rt, err := defaults.Open(defaults.Opts{
-		Opts: ningharness.Opts{
-			DataDir: "./data",           // desk.db directory
-			Root:    "/path/to/project", // project workspace
-		},
-		// MCPAddr: ""  → start MCP at 127.0.0.1:51020 with core tools
-		// MCPAddr: "off" → no MCP HTTP
-		// WithoutEino: true → no default Guest (bring your own)
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer rt.Close()
-
-	fmt.Println("MCP endpoint:", rt.MCPURL()) // for Cursor etc.
-
-	reply, err := rt.Chat(context.Background(), "List the project tree in one short paragraph.")
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println(reply)
-}
+rt, err := defaults.Open(defaults.Opts{
+	Opts:    ningharness.Opts{DataDir: "./data", Root: root},
+	MCPAddr: "off",
+	Eino: eino.Opts{
+		APIKey:  "sk-...",
+		BaseURL: "https://api.openai.com/v1", // empty → NINGHARNESS_BASE_URL / OPENAI_BASE_URL
+		Model:   "gpt-4o-mini",
+	},
+})
+reply, err := rt.Chat(ctx, "List files briefly.")
 ```
+
+Bring your own Guest (no Eino): `WithoutEino: true`, then `rt.SetGuest(myGuest)`.
 
 ### Opt out
 
@@ -133,7 +134,7 @@ rt.SetGuest(myGuest)
 2. **MCP HTTP** (`/mcp`) — same tools for Cursor or other MCP clients
 3. **Eino Guest** — ReAct over a subset of those tools via `ToolHost.Invoke`
 
-Env: `NINGHARNESS_API_KEY` or `OPENAI_API_KEY`; optional `OPENAI_BASE_URL`, `NINGHARNESS_MODEL`.
+Env (Eino Guest only): `NINGHARNESS_API_KEY` / `OPENAI_API_KEY`, `NINGHARNESS_BASE_URL` / `OPENAI_BASE_URL`, optional `NINGHARNESS_MODEL`. MCP itself never reads a key.
 
 ## Integrate
 

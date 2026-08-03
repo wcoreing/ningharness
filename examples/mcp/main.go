@@ -35,7 +35,19 @@ func main() {
 	}
 	defer rt.Close()
 
-	fmt.Println("MCP:", rt.MCPURL())
+	url := rt.MCPURL()
+	fmt.Println("MCP:", url)
+	fmt.Println()
+	fmt.Println("Cursor mcp.json / settings 片段:")
+	fmt.Printf(`{
+  "mcpServers": {
+    "ningharness": {
+      "url": %q
+    }
+  }
+}
+`, url)
+	fmt.Println()
 	fmt.Println("Ctrl+C to stop")
 
 	ch := make(chan os.Signal, 1)

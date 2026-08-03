@@ -25,8 +25,8 @@ Prefer read_file / list_tree / grep before write_file. Keep replies short; after
 
 // Opts Eino Guest 配置；空字段从环境变量回落。
 type Opts struct {
-	APIKey      string // OPENAI_API_KEY 或 NINGHARNESS_API_KEY
-	BaseURL     string // OPENAI_BASE_URL
+	APIKey      string // NINGHARNESS_API_KEY 或 OPENAI_API_KEY
+	BaseURL     string // NINGHARNESS_BASE_URL 或 OPENAI_BASE_URL
 	Model       string // NINGHARNESS_MODEL，默认 gpt-4o-mini
 	Instruction string
 	MaxIters    int // 默认 24
@@ -48,6 +48,9 @@ func New(host *toolhost.ToolHost, opts Opts) (guest.Guest, error) {
 		return nil, fmt.Errorf("eino guest: set NINGHARNESS_API_KEY or OPENAI_API_KEY")
 	}
 	baseURL := strings.TrimSpace(opts.BaseURL)
+	if baseURL == "" {
+		baseURL = strings.TrimSpace(os.Getenv("NINGHARNESS_BASE_URL"))
+	}
 	if baseURL == "" {
 		baseURL = strings.TrimSpace(os.Getenv("OPENAI_BASE_URL"))
 	}
