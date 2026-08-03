@@ -142,13 +142,12 @@ CREATE TABLE file_timeline (
 	if ft != 0 {
 		t.Fatal("file_timeline should be dropped")
 	}
-	var baseline string
-	if err := odb.QueryRow(`SELECT baseline FROM pin_sessions WHERE project_id=?`, pid).Scan(&baseline); err != nil || baseline != "b" {
-		t.Fatalf("pin_sessions baseline=%q err=%v", baseline, err)
-	}
-	var summary string
-	if err := odb.QueryRow(`SELECT summary FROM growth_reflect WHERE project_id=?`, pid).Scan(&summary); err != nil || summary != "grow" {
-		t.Fatalf("growth_reflect summary=%q err=%v", summary, err)
+	for _, tbl := range []string{"pin_sessions", "growth_reflect", "pins", "settings_blob", "app_state", "product_feedback", "library_pack"} {
+		var n int
+		_ = odb.QueryRow(`SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?`, tbl).Scan(&n)
+		if n != 0 {
+			t.Fatalf("product table %s should not exist in framework schema", tbl)
+		}
 	}
 	var metaBlob int
 	_ = odb.QueryRow(`SELECT COUNT(*) FROM meta WHERE project_id=? AND key IN ('review_session_json','last_reflect_json')`, pid).Scan(&metaBlob)

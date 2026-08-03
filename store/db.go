@@ -67,13 +67,7 @@ func Open() (*sql.DB, error) {
 		return nil, err
 	}
 	db, err := openCached(cacheKey, path)
-	if err != nil {
-		return nil, err
-	}
-	if err := migrateHomeJSON(db); err != nil {
-		return nil, fmt.Errorf("deskdb migrate home json: %w", err)
-	}
-	return db, nil
+	return db, err
 }
 
 // OpenAt 打开指定目录下的 desk.db（测试）。
@@ -191,7 +185,7 @@ func ensureSchema(db *sql.DB) error {
 	if ver > CurrentSchemaVersion {
 		return fmt.Errorf("store: schema version %d newer than supported %d", ver, CurrentSchemaVersion)
 	}
-	// 统一库前的残版：丢掉台面表后按最新 schema 重建（settings/app_state/feedback 保留）
+	// 统一库前的残版：丢掉旧台面表后按最新 framework schema 重建
 	if ver > 0 && ver < 2 {
 		if err := wipeIncompatible(db); err != nil {
 			return err

@@ -1,7 +1,7 @@
 package store
 
 // CurrentSchemaVersion 当前统一库版本；升级走 numbered migrations。
-const CurrentSchemaVersion = 21
+const CurrentSchemaVersion = 22
 
 // unifiedSchemaSQL 全新库：jobs=队列，tasks=执行台账；对话 SSOT=history_message；正文外置=resource。
 const unifiedSchemaSQL = `
@@ -91,20 +91,6 @@ CREATE TABLE IF NOT EXISTS job_steps (
   FOREIGN KEY (project_id, job_id) REFERENCES jobs(project_id, id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS pins (
-  project_id TEXT NOT NULL,
-  path TEXT NOT NULL,
-  sort_ord INTEGER NOT NULL DEFAULT 0,
-  note TEXT NOT NULL DEFAULT '',
-  PRIMARY KEY (project_id, path)
-);
-
-CREATE TABLE IF NOT EXISTS pin_sessions (
-  project_id TEXT PRIMARY KEY,
-  baseline TEXT NOT NULL DEFAULT '',
-  started TEXT NOT NULL DEFAULT ''
-);
-
 CREATE TABLE IF NOT EXISTS history_message (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   project_id TEXT NOT NULL,
@@ -160,54 +146,6 @@ CREATE INDEX IF NOT EXISTS idx_resource_session ON resource(project_id, session_
 CREATE INDEX IF NOT EXISTS idx_resource_call ON resource(project_id, tool_call_id);
 CREATE INDEX IF NOT EXISTS idx_resource_path ON resource(project_id, rel_path);
 CREATE INDEX IF NOT EXISTS idx_resource_kind ON resource(project_id, kind);
-
-CREATE TABLE IF NOT EXISTS growth_reflect (
-  project_id TEXT PRIMARY KEY,
-  at_ms INTEGER NOT NULL DEFAULT 0,
-  task_id TEXT NOT NULL DEFAULT '',
-  status TEXT NOT NULL DEFAULT '',
-  summary TEXT NOT NULL DEFAULT '',
-  lesson_rels_json TEXT NOT NULL DEFAULT '[]'
-);
-
-CREATE TABLE IF NOT EXISTS settings_blob (
-  id INTEGER PRIMARY KEY CHECK (id = 1),
-  json TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS app_state (
-  id INTEGER PRIMARY KEY CHECK (id = 1),
-  last_project TEXT NOT NULL DEFAULT '',
-  recent_json TEXT NOT NULL DEFAULT '[]'
-);
-
-CREATE TABLE IF NOT EXISTS product_feedback (
-  id TEXT PRIMARY KEY,
-  status TEXT NOT NULL,
-  category TEXT NOT NULL DEFAULT '',
-  title TEXT NOT NULL,
-  detail TEXT NOT NULL DEFAULT '',
-  suggested_fix TEXT NOT NULL DEFAULT '',
-  project_root TEXT NOT NULL DEFAULT '',
-  task_id TEXT NOT NULL DEFAULT '',
-  kind TEXT NOT NULL DEFAULT '',
-  created_at_ms INTEGER NOT NULL,
-  updated_at_ms INTEGER NOT NULL DEFAULT 0
-);
-CREATE INDEX IF NOT EXISTS idx_feedback_status ON product_feedback(status);
-
-CREATE TABLE IF NOT EXISTS library_pack (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL DEFAULT '',
-  description TEXT NOT NULL DEFAULT '',
-  version TEXT NOT NULL DEFAULT '1',
-  tags_json TEXT NOT NULL DEFAULT '[]',
-  summary TEXT NOT NULL DEFAULT '',
-  source_project TEXT NOT NULL DEFAULT '',
-  updated_at_ms INTEGER NOT NULL DEFAULT 0,
-  enabled INTEGER NOT NULL DEFAULT 1
-);
-CREATE INDEX IF NOT EXISTS idx_library_pack_updated ON library_pack(updated_at_ms DESC);
 
 CREATE TABLE IF NOT EXISTS lesson_entry (
   id TEXT NOT NULL,

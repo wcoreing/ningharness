@@ -125,8 +125,6 @@ func migrateLegacyProjectDB(db *sql.DB, root, pid string) error {
 		{`SELECT 1 FROM leg.sqlite_master WHERE type='table' AND name='queue_steps' LIMIT 1`,
 			`INSERT OR IGNORE INTO job_steps(project_id, job_id, idx, rel, title, status, task_id, error)
 			 SELECT ?, task_id, idx, rel, title, status, run_id, error FROM leg.queue_steps`},
-		{`SELECT 1 FROM leg.sqlite_master WHERE type='table' AND name='pins' LIMIT 1`,
-			`INSERT OR IGNORE INTO pins(project_id, path, sort_ord) SELECT ?, path, sort_ord FROM leg.pins`},
 		{`SELECT 1 FROM leg.sqlite_master WHERE type='table' AND name='meta' LIMIT 1`,
 			`INSERT OR IGNORE INTO meta(project_id, key, value) SELECT ?, key, value FROM leg.meta`},
 	}
@@ -293,18 +291,6 @@ func migrateProjectJSON(db *sql.DB, root, pid string) error {
 	}
 	if err := migrateQueueTx(tx, root, pid); err != nil {
 		return fmt.Errorf("queue: %w", err)
-	}
-	if err := migratePinsTx(tx, root, pid); err != nil {
-		return fmt.Errorf("pins: %w", err)
-	}
-	if err := migrateReflectTx(tx, root, pid); err != nil {
-		return fmt.Errorf("reflect: %w", err)
-	}
-	if err := migrateReviewTx(tx, root, pid); err != nil {
-		return fmt.Errorf("review: %w", err)
-	}
-	if err := migrateTimelineTx(tx, root, pid); err != nil {
-		return fmt.Errorf("timeline: %w", err)
 	}
 	if _, err := tx.Exec(`INSERT INTO meta(project_id, key, value) VALUES(?,?,?)
 		ON CONFLICT(project_id, key) DO UPDATE SET value=excluded.value`, pid, migratedJSONFlag, "1"); err != nil {
@@ -700,82 +686,5 @@ func boolStr(v bool) string {
 }
 
 func migrateHomeJSON(db *sql.DB) error {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return err
-	}
-	base := filepath.Join(home, ".agentdesk")
-
-	if fileExists(filepath.Join(base, "settings.json")) {
-		var n int
-		_ = db.QueryRow(`SELECT COUNT(*) FROM settings_blob`).Scan(&n)
-		if n == 0 {
-			if raw, err := os.ReadFile(filepath.Join(base, "settings.json")); err == nil {
-				if _, err := db.Exec(`INSERT INTO settings_blob(id, json) VALUES(1, ?)
-					ON CONFLICT(id) DO UPDATE SET json=excluded.json`, string(raw)); err != nil {
-					return err
-				}
-				_ = os.Remove(filepath.Join(base, "settings.json"))
-			}
-		}
-	}
-	if fileExists(filepath.Join(base, "state.json")) {
-		var n int
-		_ = db.QueryRow(`SELECT COUNT(*) FROM app_state`).Scan(&n)
-		if n == 0 {
-			if raw, err := os.ReadFile(filepath.Join(base, "state.json")); err == nil {
-				var st struct {
-					LastProject    string   `json:"lastProject"`
-					RecentProjects []string `json:"recentProjects"`
-				}
-				if json.Unmarshal(raw, &st) == nil {
-					rj, _ := json.Marshal(st.RecentProjects)
-					if _, err := db.Exec(`INSERT INTO app_state(id, last_project, recent_json) VALUES(1, ?, ?)
-						ON CONFLICT(id) DO UPDATE SET last_project=excluded.last_project, recent_json=excluded.recent_json`,
-						st.LastProject, string(rj)); err != nil {
-						return err
-					}
-					_ = os.Remove(filepath.Join(base, "state.json"))
-				}
-			}
-		}
-	}
-	if fileExists(filepath.Join(base, "product-feedback.json")) {
-		var n int
-		_ = db.QueryRow(`SELECT COUNT(*) FROM product_feedback`).Scan(&n)
-		if n == 0 {
-			if raw, err := os.ReadFile(filepath.Join(base, "product-feedback.json")); err == nil {
-				var f struct {
-					Entries []struct {
-						ID           string `json:"id"`
-						Status       string `json:"status"`
-						Category     string `json:"category"`
-						Title        string `json:"title"`
-						Detail       string `json:"detail"`
-						SuggestedFix string `json:"suggestedFix"`
-						ProjectRoot  string `json:"projectRoot"`
-						TaskID       string `json:"taskId"`
-						Kind         string `json:"kind"`
-						CreatedAtMs  int64  `json:"createdAtMs"`
-						UpdatedAtMs  int64  `json:"updatedAtMs"`
-					} `json:"entries"`
-				}
-				if json.Unmarshal(raw, &f) == nil {
-					for _, e := range f.Entries {
-						if strings.TrimSpace(e.ID) == "" {
-							continue
-						}
-						if _, err := db.Exec(`INSERT INTO product_feedback(
-							id, status, category, title, detail, suggested_fix, project_root, task_id, kind, created_at_ms, updated_at_ms)
-							VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING`,
-							e.ID, e.Status, e.Category, e.Title, e.Detail, e.SuggestedFix, e.ProjectRoot, e.TaskID, e.Kind, e.CreatedAtMs, e.UpdatedAtMs); err != nil {
-							return err
-						}
-					}
-					_ = os.Remove(filepath.Join(base, "product-feedback.json"))
-				}
-			}
-		}
-	}
 	return nil
 }

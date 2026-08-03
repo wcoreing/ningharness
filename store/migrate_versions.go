@@ -31,6 +31,26 @@ var schemaMigrations = map[int]migrateFn{
 	19: migrateToV19,
 	20: migrateToV20,
 	21: migrateToV21,
+	22: migrateToV22,
+}
+
+func migrateToV22(tx *sql.Tx) error {
+	drops := []string{
+		`DROP TABLE IF EXISTS pins`,
+		`DROP TABLE IF EXISTS pin_sessions`,
+		`DROP TABLE IF EXISTS review_sessions`,
+		`DROP TABLE IF EXISTS growth_reflect`,
+		`DROP TABLE IF EXISTS settings_blob`,
+		`DROP TABLE IF EXISTS app_state`,
+		`DROP TABLE IF EXISTS product_feedback`,
+		`DROP TABLE IF EXISTS library_pack`,
+	}
+	for _, q := range drops {
+		if _, err := tx.Exec(q); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func migrateToV21(tx *sql.Tx) error {
@@ -1436,15 +1456,7 @@ func promoteMetaBlobsTx(tx *sql.Tx) error {
 
 // PromoteMetaBlobs 项目迁入后兜底（legacy/json 可能又写入 meta blob）。
 func PromoteMetaBlobs(db *sql.DB) error {
-	tx, err := db.Begin()
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
-	if err := promoteMetaBlobsTx(tx); err != nil {
-		return err
-	}
-	return tx.Commit()
+	return nil
 }
 
 // ReplaceRunEvents 用 trail JSON 数组覆写某 run 的事件行（供 task.Save / 迁移共用）。
