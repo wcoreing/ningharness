@@ -1,5 +1,5 @@
-// Package ningharness 带 SQLite 的 Agent 宿主地基（session / history / task / job / lesson）。
-// 不含 turnpipe、Hub/MCP、Eino；产品管道与工具台由调用方提供。
+// Package ningharness 带 SQLite 的 Agent 宿主地基。
+// 含 session/history/task/job/lesson/skill 与 hub 核工具；不含 turnpipe、Eino、产品 packs。
 package ningharness
 
 import (
