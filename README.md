@@ -34,7 +34,7 @@ Tool truth lives in the host: Guests change the world only through ToolHost/MCP�
 ```text
 ningharness/
   Open · Close · UseProject     Harness facade / Harness 门面
-  deskdb                        single desk database / 唯一台面库
+  store                        single desk database / 唯一台面库
   session · history · resource  working memory / 工作记忆
   task · job                    run ledger / queue (Executor injected) / 台账与队列
   lesson                        experience SSOT (skill|project|personal) / 经验 SSOT

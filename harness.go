@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"ningharness/deskdb"
+	"ningharness/store"
 	"ningharness/job"
 	"ningharness/session"
 )
@@ -37,9 +37,9 @@ func Open(opts Opts) (*Harness, error) {
 	)
 	dir := strings.TrimSpace(opts.DataDir)
 	if dir == "" {
-		db, err = deskdb.Open()
+		db, err = store.Open()
 	} else {
-		db, err = deskdb.OpenAt(dir)
+		db, err = store.OpenAt(dir)
 	}
 	if err != nil {
 		return nil, err
@@ -67,7 +67,7 @@ func (h *Harness) Close() error {
 	if h.Job != nil {
 		h.Job.Shutdown()
 	}
-	deskdb.CloseAll()
+	store.CloseAll()
 	h.DB = nil
 	return nil
 }
@@ -89,7 +89,7 @@ func (h *Harness) UseProject(root string) error {
 	if root == "" {
 		return fmt.Errorf("ningharness: empty root")
 	}
-	db, err := deskdb.OpenProject(root)
+	db, err := store.OpenProject(root)
 	if err != nil {
 		return err
 	}

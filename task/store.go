@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"ningharness/deskdb"
+	"ningharness/store"
 	"ningharness/history"
 )
 
@@ -59,8 +59,8 @@ type IndexEntry struct {
 }
 
 func openDB(root string) (*sql.DB, string, error) {
-	db, err := deskdb.OpenProject(root)
-	return db, deskdb.ProjectID(root), err
+	db, err := store.OpenProject(root)
+	return db, store.ProjectID(root), err
 }
 
 // Save 写入一轮元数据；超出 MaxKeep 删最旧。过程行已在 history_message；此处只写 tasks。

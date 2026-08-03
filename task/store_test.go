@@ -6,14 +6,14 @@ import (
 	"strings"
 	"testing"
 
-	"ningharness/deskdb"
+	"ningharness/store"
 	"ningharness/history"
 )
 
 func TestSaveGetList(t *testing.T) {
 	root := t.TempDir()
 	_ = os.WriteFile(filepath.Join(root, ".gitkeep"), []byte(""), 0o644)
-	if _, err := deskdb.OpenProject(root); err != nil {
+	if _, err := store.OpenProject(root); err != nil {
 		t.Fatal(err)
 	}
 	if err := history.Append(root, "main", history.Msg{Role: "thinking", Content: "hi", TaskID: "t1"}); err != nil {
@@ -67,7 +67,7 @@ func TestGuessRelPath(t *testing.T) {
 func TestSaveGetFeedforwardFromHistory(t *testing.T) {
 	root := t.TempDir()
 	_ = os.WriteFile(filepath.Join(root, ".gitkeep"), []byte(""), 0o644)
-	if _, err := deskdb.OpenProject(root); err != nil {
+	if _, err := store.OpenProject(root); err != nil {
 		t.Fatal(err)
 	}
 	ff := "## 项目现状\n- focus: a.md"

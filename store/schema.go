@@ -1,4 +1,4 @@
-package deskdb
+package store
 
 // CurrentSchemaVersion 当前统一库版本；升级走 numbered migrations。
 const CurrentSchemaVersion = 21

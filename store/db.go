@@ -1,6 +1,6 @@
-// Package deskdb 台面元数据：唯一 SQLite（默认 ~/.agentdesk/desk.db）。
+// Package store 台面 SQLite（默认文件名仍为 desk.db；路径可由 DataDir 配置）。
 // 项目数据用 project_id 隔离；认账记忆（正文 / LESSONS）仍在文件系统。
-package deskdb
+package store
 
 import (
 	"database/sql"
@@ -89,7 +89,7 @@ func OpenAt(dir string) (*sql.DB, error) {
 func OpenProject(root string) (*sql.DB, error) {
 	root = strings.TrimSpace(root)
 	if root == "" {
-		return nil, fmt.Errorf("deskdb: empty root")
+		return nil, fmt.Errorf("store: empty root")
 	}
 	db, err := openProjectDB(root)
 	if err != nil {
@@ -125,7 +125,7 @@ func OpenProjectAt(dir, root string) (*sql.DB, error) {
 func EnsureProject(db *sql.DB, root string) error {
 	pid := ProjectID(root)
 	if pid == "" {
-		return fmt.Errorf("deskdb: empty project id")
+		return fmt.Errorf("store: empty project id")
 	}
 	_, err := db.Exec(`INSERT INTO projects(id, root, updated_at_ms) VALUES(?,?,strftime('%s','now')*1000)
 		ON CONFLICT(id) DO UPDATE SET root=excluded.root, updated_at_ms=excluded.updated_at_ms`, pid, pid)
@@ -189,7 +189,7 @@ func ensureSchema(db *sql.DB) error {
 		ver = 0
 	}
 	if ver > CurrentSchemaVersion {
-		return fmt.Errorf("deskdb: schema version %d newer than supported %d", ver, CurrentSchemaVersion)
+		return fmt.Errorf("store: schema version %d newer than supported %d", ver, CurrentSchemaVersion)
 	}
 	// 统一库前的残版：丢掉台面表后按最新 schema 重建（settings/app_state/feedback 保留）
 	if ver > 0 && ver < 2 {
@@ -210,7 +210,7 @@ func ensureSchema(db *sql.DB) error {
 		next := ver + 1
 		fn := schemaMigrations[next]
 		if fn == nil {
-			return fmt.Errorf("deskdb: missing migration to v%d", next)
+			return fmt.Errorf("store: missing migration to v%d", next)
 		}
 		tx, err := db.Begin()
 		if err != nil {

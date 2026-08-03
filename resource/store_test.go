@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"ningharness/deskdb"
+	"ningharness/store"
 )
 
 func TestHistoryContentShortInline(t *testing.T) {
@@ -24,7 +24,7 @@ func TestPutGetSearch(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, ".gitkeep"), []byte(""), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := deskdb.OpenProject(root); err != nil {
+	if _, err := store.OpenProject(root); err != nil {
 		t.Fatal(err)
 	}
 

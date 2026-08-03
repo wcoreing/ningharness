@@ -9,7 +9,7 @@ import (
 	"unicode/utf8"
 
 	"ningharness/task"
-	"ningharness/deskdb"
+	"ningharness/store"
 )
 
 const (
@@ -65,11 +65,11 @@ type SearchOptions struct {
 }
 
 func openDB(root string) (*sql.DB, string, error) {
-	db, err := deskdb.OpenProject(root)
+	db, err := store.OpenProject(root)
 	if err != nil {
 		return nil, "", err
 	}
-	return db, deskdb.ProjectID(root), nil
+	return db, store.ProjectID(root), nil
 }
 
 func resolveKind(kind, phase string) (string, string) {

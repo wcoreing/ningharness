@@ -9,7 +9,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"ningharness/deskdb"
+	"ningharness/store"
 )
 
 const (
@@ -60,11 +60,11 @@ func (b Budget) normalize() Budget {
 }
 
 func openDB(root string) (*sql.DB, string, error) {
-	db, err := deskdb.OpenProject(root)
+	db, err := store.OpenProject(root)
 	if err != nil {
 		return nil, "", err
 	}
-	return db, deskdb.ProjectID(root), nil
+	return db, store.ProjectID(root), nil
 }
 
 // EnsureSystem 每个 session 头部保留/更新一条 system。

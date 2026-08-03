@@ -1,4 +1,4 @@
-package deskdb
+package store
 
 import (
 	"os"

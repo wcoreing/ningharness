@@ -8,7 +8,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"ningharness/deskdb"
+	"ningharness/store"
 	"ningharness/history"
 )
 
@@ -46,8 +46,8 @@ type Store struct {
 func NewStore() *Store { return &Store{} }
 
 func (s *Store) db(projectRoot string) (*sql.DB, string, error) {
-	db, err := deskdb.OpenProject(projectRoot)
-	return db, deskdb.ProjectID(projectRoot), err
+	db, err := store.OpenProject(projectRoot)
+	return db, store.ProjectID(projectRoot), err
 }
 
 func (s *Store) load(projectRoot, projectID string) (File, error) {
@@ -91,7 +91,7 @@ func (s *Store) load(projectRoot, projectID string) (File, error) {
 		sess.Messages = msgs
 		sessions = append(sessions, sess)
 	}
-	active, _ := deskdb.MetaGet(db, pid, "active_session")
+	active, _ := store.MetaGet(db, pid, "active_session")
 	if len(sessions) == 0 {
 		now := time.Now().UnixMilli()
 		sid := MainSessionID
@@ -99,7 +99,7 @@ func (s *Store) load(projectRoot, projectID string) (File, error) {
 			pid, sid, "main", OrchKey(projectID, sid), now); err != nil {
 			return File{}, err
 		}
-		_ = deskdb.MetaSet(db, pid, "active_session", sid)
+		_ = store.MetaSet(db, pid, "active_session", sid)
 		sessions = []Session{{
 			ID: sid, Title: "main", OrchKey: OrchKey(projectID, sid),
 			UpdatedAt: now, Messages: []Message{},
@@ -108,7 +108,7 @@ func (s *Store) load(projectRoot, projectID string) (File, error) {
 	}
 	if NormalizeSessionID(active) == "" {
 		active = sessions[0].ID
-		_ = deskdb.MetaSet(db, pid, "active_session", active)
+		_ = store.MetaSet(db, pid, "active_session", active)
 	}
 	return File{ActiveID: NormalizeSessionID(active), Sessions: sessions}, nil
 }
@@ -138,7 +138,7 @@ func loadMessages(projectRoot, sessionID string) ([]Message, error) {
 }
 
 func (s *Store) saveActive(db *sql.DB, projectKey, activeID string) error {
-	return deskdb.MetaSet(db, projectKey, "active_session", NormalizeSessionID(activeID))
+	return store.MetaSet(db, projectKey, "active_session", NormalizeSessionID(activeID))
 }
 
 func upsertSession(tx *sql.Tx, projectKey string, sess Session) error {

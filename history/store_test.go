@@ -4,15 +4,15 @@ import (
 	"strings"
 	"testing"
 
-	"ningharness/deskdb"
+	"ningharness/store"
 )
 
 func TestAppendLoadByTaskAndStripSnapshot(t *testing.T) {
-	deskdb.ResetCacheForTest()
-	defer deskdb.ResetCacheForTest()
+	store.ResetCacheForTest()
+	defer store.ResetCacheForTest()
 
 	root := t.TempDir()
-	if _, err := deskdb.OpenProject(root); err != nil {
+	if _, err := store.OpenProject(root); err != nil {
 		t.Fatal(err)
 	}
 
@@ -173,10 +173,10 @@ func TestBuildForModelSkipsThinking(t *testing.T) {
 }
 
 func TestAppendThinkingMerges(t *testing.T) {
-	deskdb.ResetCacheForTest()
-	defer deskdb.ResetCacheForTest()
+	store.ResetCacheForTest()
+	defer store.ResetCacheForTest()
 	root := t.TempDir()
-	if _, err := deskdb.OpenProject(root); err != nil {
+	if _, err := store.OpenProject(root); err != nil {
 		t.Fatal(err)
 	}
 	if err := AppendThinking(root, "main", "t1", "甲"); err != nil {

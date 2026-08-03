@@ -12,7 +12,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"ningharness/deskdb"
+	"ningharness/store"
 )
 
 const (
@@ -93,7 +93,7 @@ func Append(in AppendInput) (Entry, error) {
 	var pid string
 	var err error
 	if scope == ScopePersonal {
-		db, err = deskdb.Open()
+		db, err = store.Open()
 		if err != nil {
 			return Entry{}, err
 		}
@@ -260,7 +260,7 @@ func ListByScope(root, scope string, limit int) ([]Entry, error) {
 	var pid string
 	var err error
 	if scope == ScopePersonal {
-		db, err = deskdb.Open()
+		db, err = store.Open()
 		if err != nil {
 			return nil, err
 		}
@@ -287,7 +287,7 @@ func ListActivePersonal(limit int) ([]Entry, error) {
 	if limit <= 0 {
 		limit = 12
 	}
-	db, err := deskdb.Open()
+	db, err := store.Open()
 	if err != nil {
 		return nil, err
 	}
@@ -517,12 +517,12 @@ func EnsureImported(root string) error {
 	if root == "" {
 		return nil
 	}
-	db, err := deskdb.OpenProject(root)
+	db, err := store.OpenProject(root)
 	if err != nil {
 		return err
 	}
-	pid := deskdb.ProjectID(root)
-	v, err := deskdb.MetaGet(db, pid, metaImported)
+	pid := store.ProjectID(root)
+	v, err := store.MetaGet(db, pid, metaImported)
 	if err == nil && v == "1" {
 		return nil
 	}
@@ -530,7 +530,7 @@ func EnsureImported(root string) error {
 	ents, err := os.ReadDir(base)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return deskdb.MetaSet(db, pid, metaImported, "1")
+			return store.MetaSet(db, pid, metaImported, "1")
 		}
 		return err
 	}
@@ -546,7 +546,7 @@ func EnsureImported(root string) error {
 			return err
 		}
 	}
-	return deskdb.MetaSet(db, pid, metaImported, "1")
+	return store.MetaSet(db, pid, metaImported, "1")
 }
 
 func open(root string) (*sql.DB, string, error) {
@@ -554,11 +554,11 @@ func open(root string) (*sql.DB, string, error) {
 	if root == "" {
 		return nil, "", fmt.Errorf("lesson: empty root")
 	}
-	db, err := deskdb.OpenProject(root)
+	db, err := store.OpenProject(root)
 	if err != nil {
 		return nil, "", err
 	}
-	return db, deskdb.ProjectID(root), nil
+	return db, store.ProjectID(root), nil
 }
 
 func mutateByID(root, id string, fn func(db *sql.DB, pid string) error) error {
@@ -573,7 +573,7 @@ func mutateByID(root, id string, fn func(db *sql.DB, pid string) error) error {
 	if root != "" {
 		db, pid, err = open(root)
 	} else {
-		db, err = deskdb.Open()
+		db, err = store.Open()
 		pid = PersonalProjectID
 	}
 	if err != nil {

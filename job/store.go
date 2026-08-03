@@ -6,12 +6,12 @@ import (
 	"strconv"
 	"strings"
 
-	"ningharness/deskdb"
+	"ningharness/store"
 )
 
 func openDB(root string) (*sql.DB, string, error) {
-	db, err := deskdb.OpenProject(root)
-	return db, deskdb.ProjectID(root), err
+	db, err := store.OpenProject(root)
+	return db, store.ProjectID(root), err
 }
 
 func loadFile(root string) (File, error) {
@@ -24,16 +24,16 @@ func loadFile(root string) (File, error) {
 		return File{}, err
 	}
 	f := File{Version: 1, PauseOnError: true}
-	if v, _ := deskdb.MetaGet(db, pid, "queue_paused"); v == "1" {
+	if v, _ := store.MetaGet(db, pid, "queue_paused"); v == "1" {
 		f.Paused = true
 	}
-	if v, _ := deskdb.MetaGet(db, pid, "queue_pause_on_error"); v == "0" {
+	if v, _ := store.MetaGet(db, pid, "queue_pause_on_error"); v == "0" {
 		f.PauseOnError = false
 	} else {
 		f.PauseOnError = true
 	}
-	f.PauseReason, _ = deskdb.MetaGet(db, pid, "queue_pause_reason")
-	if v, _ := deskdb.MetaGet(db, pid, "queue_max_parallel"); v != "" {
+	f.PauseReason, _ = store.MetaGet(db, pid, "queue_pause_reason")
+	if v, _ := store.MetaGet(db, pid, "queue_max_parallel"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
 			f.MaxParallel = n
 		}

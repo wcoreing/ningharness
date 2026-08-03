@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"ningharness"
-	"ningharness/deskdb"
+	"ningharness/store"
 	"ningharness/job"
 	"ningharness/lesson"
 	"ningharness/task"
@@ -34,7 +34,7 @@ func TestHarnessSmoke(t *testing.T) {
 	if err := h.UseProject(root); err != nil {
 		t.Fatal(err)
 	}
-	pid := deskdb.ProjectID(root)
+	pid := store.ProjectID(root)
 
 	if _, err := h.Session.Append(root, pid, "main", "user", "smoke hello", "", ""); err != nil {
 		t.Fatal(err)

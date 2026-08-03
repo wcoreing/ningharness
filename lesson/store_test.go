@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"ningharness/deskdb"
+	"ningharness/store"
 )
 
 func TestAppendListInjectImport(t *testing.T) {
@@ -16,7 +16,7 @@ func TestAppendListInjectImport(t *testing.T) {
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := deskdb.OpenProject(root); err != nil {
+	if _, err := store.OpenProject(root); err != nil {
 		t.Fatal(err)
 	}
 
@@ -68,7 +68,7 @@ func TestPersonalAndProjectScope(t *testing.T) {
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := deskdb.OpenProject(root); err != nil {
+	if _, err := store.OpenProject(root); err != nil {
 		t.Fatal(err)
 	}
 

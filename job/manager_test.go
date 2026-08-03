@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"ningharness/deskdb"
+	"ningharness/store"
 	agenttask "ningharness/task"
 )
 
@@ -98,7 +98,7 @@ func TestEnqueuePathsAndSerialRun(t *testing.T) {
 	if batch.StepDone != 2 || batch.StepTotal != 2 {
 		t.Fatalf("progress done=%d total=%d hint=%q", batch.StepDone, batch.StepTotal, batch.ProgressHint)
 	}
-	if _, err := deskdb.OpenProject(root); err != nil {
+	if _, err := store.OpenProject(root); err != nil {
 		t.Fatal(err)
 	}
 	m.Shutdown()
