@@ -46,101 +46,86 @@ ningharness/           Harness Open/Close/UseProject
 
 ## Quick start
 
-MCP and Guest are **independent**. MCP alone needs **no API key**. A key is only for the optional Eino Guest.
+One complete path: edit Eino config → start MCP + Guest → send one message → paste Cursor URL.
 
-### MCP only (no Guest, no key)
-
-```bash
-go run ./examples/mcp /path/to/project
-# prints MCP URL + a Cursor config snippet
-# override: NINGHARNESS_MCP_ADDR=127.0.0.1:51021
-```
-
-Paste the printed URL into Cursor (`~/.cursor/mcp.json` or project `.cursor/mcp.json`):
-
-```json
-{
-  "mcpServers": {
-    "ningharness": {
-      "url": "http://127.0.0.1:51020/mcp"
-    }
-  }
-}
-```
-
-Use the URL from the terminal (port may change if 51020 is busy). Cursor uses its own model key; this process needs none.
+Edit [`examples/chat/main.go`](examples/chat/main.go):
 
 ```go
-rt, err := defaults.Open(defaults.Opts{
-	Opts:        ningharness.Opts{DataDir: "./data", Root: root},
-	WithoutEino: true, // no Guest, no API key
-})
-// rt.MCPURL() → put in the url field above
-```
+package main
 
-### Optional: Eino Guest (configure in the demo)
+import (
+	"context"
+	"fmt"
+	"os"
+	"os/signal"
+	"path/filepath"
+	"syscall"
 
-Edit `einoCfg` at the top of [`examples/chat/main.go`](examples/chat/main.go):
+	"ningharness"
+	"ningharness/defaults"
+	"ningharness/guest/eino"
+)
 
-```go
 var einoCfg = eino.Opts{
-	APIKey:  "sk-...",                    // required
-	BaseURL: "https://api.openai.com/v1", // gateways go here
+	APIKey:  "sk-...",                    // required for Guest
+	BaseURL: "https://api.openai.com/v1", // gateway goes here
 	Model:   "gpt-4o-mini",
 }
+
+func main() {
+	root, msg := ".", "List the project files in one short paragraph."
+	if len(os.Args) > 1 {
+		root = os.Args[1]
+	}
+	if len(os.Args) > 2 {
+		msg = os.Args[2]
+	}
+	abs, _ := filepath.Abs(root)
+
+	rt, err := defaults.Open(defaults.Opts{
+		Opts: ningharness.Opts{DataDir: filepath.Join(abs, ".ningharness-data"), Root: abs},
+		Eino: einoCfg,
+		// WithoutEino: true  → MCP only (no key)
+		// MCPAddr: "off"     → Chat only (no HTTP)
+		// MCPAddr: "127.0.0.1:51021" → fixed port
+	})
+	if err != nil {
+		panic(err)
+	}
+	defer rt.Close()
+
+	fmt.Println("MCP:", rt.MCPURL())
+	// paste into ~/.cursor/mcp.json → {"mcpServers":{"ningharness":{"url":"<MCP URL>"}}}
+
+	reply, err := rt.Chat(context.Background(), msg)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(reply)
+
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
+	<-ch
+}
 ```
 
-Then:
+Run:
 
 ```bash
 go run ./examples/chat /path/to/project "List files briefly."
 ```
 
-(Empty fields fall back to `NINGHARNESS_API_KEY` / `NINGHARNESS_BASE_URL` / ….)
-
-Bring your own Guest (no Eino): `WithoutEino: true`, then `rt.SetGuest(myGuest)`.
-
-### Opt out
-
-```go
-// Core only — no MCP, no Eino
-h, _ := ningharness.Open(ningharness.Opts{DataDir: "./data", Root: root})
-defer h.Close()
-
-// Defaults but no Eino (keep MCP tools for external agents)
-rt, _ := defaults.Open(defaults.Opts{
-	Opts:        ningharness.Opts{DataDir: "./data", Root: root},
-	WithoutEino: true,
-})
-
-// Defaults but no MCP HTTP
-rt, _ := defaults.Open(defaults.Opts{
-	Opts:    ningharness.Opts{DataDir: "./data", Root: root},
-	MCPAddr: "off",
-})
-
-// Replace Guest
-rt.SetGuest(myGuest)
-```
-
-### What defaults wire
-
-1. **ToolHost** + core tools: `list_tree`, `read_file`, `write_file`, `grep`, `edit`, session / skill / lesson / task / queue…
-2. **MCP HTTP** (`/mcp`) — same tools for Cursor or other MCP clients
-3. **Eino Guest** — ReAct over a subset of those tools via `ToolHost.Invoke`
-
-Env (Eino Guest only): `NINGHARNESS_API_KEY` / `OPENAI_API_KEY`, `NINGHARNESS_BASE_URL` / `OPENAI_BASE_URL`, optional `NINGHARNESS_MODEL`. MCP itself never reads a key.
+Defaults wire **ToolHost** core tools + **MCP HTTP** (`/mcp`) + **Eino Guest** (ReAct via `ToolHost.Invoke`).  
+`WithoutEino` / `MCPAddr: "off"` / `SetGuest` turn pieces off or replace them. Empty Eino fields fall back to `NINGHARNESS_API_KEY`, `NINGHARNESS_BASE_URL`, `NINGHARNESS_MODEL` (or `OPENAI_*`).
 
 ## Integrate
 
 ```go
 require ningharness v0.0.0
-
-// local sibling checkout:
 replace ningharness => ../ningharness
 ```
 
-Embed `toolhost.ToolHost` for product-specific tools, or call `defaults.Open` and swap Guest with `SetGuest`.
+Embed `toolhost.ToolHost` for product tools, or `defaults.Open` + `SetGuest`.
 
 ## Develop
 
@@ -148,7 +133,7 @@ Embed `toolhost.ToolHost` for product-specific tools, or call `defaults.Open` an
 go test ./...
 ```
 
-Requires Go 1.25+ only (no Wails / Node / git).
+Requires Go 1.25+ only.
 
 ## License
 

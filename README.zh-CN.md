@@ -46,101 +46,86 @@ ningharness/           Harness Open/Close/UseProject
 
 ## 快速开始
 
-MCP 与 Guest **互不绑定**：只起 MCP **不需要** API key；key 只在启用 Eino Guest 时用。
+一条完整路径：改 Eino 配置 → 起 MCP + Guest → 发一句话 → 把 URL 贴进 Cursor。
 
-### 只起 MCP（不要 Guest，不要 key）
-
-```bash
-go run ./examples/mcp /path/to/project
-# 终端会打印 MCP 地址 + Cursor 配置片段
-# 指定端口: NINGHARNESS_MCP_ADDR=127.0.0.1:51021
-```
-
-把打印的 URL 写进 Cursor（`~/.cursor/mcp.json` 或项目 `.cursor/mcp.json`）：
-
-```json
-{
-  "mcpServers": {
-    "ningharness": {
-      "url": "http://127.0.0.1:51020/mcp"
-    }
-  }
-}
-```
-
-URL 以终端打印为准（端口被占用时会变）。配好后 Cursor 走自己的模型 key；本进程不设 key。
+编辑 [`examples/chat/main.go`](examples/chat/main.go)：
 
 ```go
-rt, err := defaults.Open(defaults.Opts{
-	Opts:        ningharness.Opts{DataDir: "./data", Root: root},
-	WithoutEino: true, // 不创建 Guest，不读 API key
-})
-// rt.MCPURL() → 填进上面 url 字段
-```
+package main
 
-### 可选：启用 Eino Guest（在 demo 里配 key / 链接）
+import (
+	"context"
+	"fmt"
+	"os"
+	"os/signal"
+	"path/filepath"
+	"syscall"
 
-编辑 [`examples/chat/main.go`](examples/chat/main.go) 顶部的 `einoCfg`：
+	"ningharness"
+	"ningharness/defaults"
+	"ningharness/guest/eino"
+)
 
-```go
 var einoCfg = eino.Opts{
-	APIKey:  "sk-...",                    // 必填
-	BaseURL: "https://api.openai.com/v1", // 网关改这里
+	APIKey:  "sk-...",                    // Guest 必填
+	BaseURL: "https://api.openai.com/v1", // 网关写这里
 	Model:   "gpt-4o-mini",
 }
+
+func main() {
+	root, msg := ".", "List the project files in one short paragraph."
+	if len(os.Args) > 1 {
+		root = os.Args[1]
+	}
+	if len(os.Args) > 2 {
+		msg = os.Args[2]
+	}
+	abs, _ := filepath.Abs(root)
+
+	rt, err := defaults.Open(defaults.Opts{
+		Opts: ningharness.Opts{DataDir: filepath.Join(abs, ".ningharness-data"), Root: abs},
+		Eino: einoCfg,
+		// WithoutEino: true  → 只要 MCP（不用 key）
+		// MCPAddr: "off"     → 只要 Chat（不起 HTTP）
+		// MCPAddr: "127.0.0.1:51021" → 固定端口
+	})
+	if err != nil {
+		panic(err)
+	}
+	defer rt.Close()
+
+	fmt.Println("MCP:", rt.MCPURL())
+	// 贴进 ~/.cursor/mcp.json → {"mcpServers":{"ningharness":{"url":"<MCP URL>"}}}
+
+	reply, err := rt.Chat(context.Background(), msg)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(reply)
+
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
+	<-ch
+}
 ```
 
-然后：
+运行：
 
 ```bash
 go run ./examples/chat /path/to/project "List files briefly."
 ```
 
-（字段留空才会读 `NINGHARNESS_API_KEY` / `NINGHARNESS_BASE_URL` 等环境变量。）
-
-自备 Guest（不绑 Eino）：`WithoutEino: true` 后 `rt.SetGuest(myGuest)`。
-
-### 不用默认
-
-```go
-// 只要地基 — 无 MCP、无 Eino
-h, _ := ningharness.Open(ningharness.Opts{DataDir: "./data", Root: root})
-defer h.Close()
-
-// 保留 MCP，不要 Eino
-rt, _ := defaults.Open(defaults.Opts{
-	Opts:        ningharness.Opts{DataDir: "./data", Root: root},
-	WithoutEino: true,
-})
-
-// 不要 MCP HTTP
-rt, _ := defaults.Open(defaults.Opts{
-	Opts:    ningharness.Opts{DataDir: "./data", Root: root},
-	MCPAddr: "off",
-})
-
-// 替换 Guest
-rt.SetGuest(myGuest)
-```
-
-### 默认装配了什么
-
-1. **ToolHost** + 核工具：`list_tree`、`read_file`、`write_file`、`grep`、`edit`，以及 session / skill / lesson / task / queue…
-2. **MCP HTTP**（`/mcp`）— 同一套工具给 Cursor 或其他 MCP 客户端
-3. **Eino Guest** — 经 `ToolHost.Invoke` 对上述部分工具做 ReAct
-
-环境变量（仅 Eino Guest）：`NINGHARNESS_API_KEY` / `OPENAI_API_KEY`，`NINGHARNESS_BASE_URL` / `OPENAI_BASE_URL`，可选 `NINGHARNESS_MODEL`。MCP 本身不读 key。
+默认装配 **ToolHost** 核工具 + **MCP HTTP**（`/mcp`）+ **Eino Guest**（经 `ToolHost.Invoke` 做 ReAct）。  
+`WithoutEino` / `MCPAddr: "off"` / `SetGuest` 可关掉或替换。Eino 字段留空则读 `NINGHARNESS_API_KEY`、`NINGHARNESS_BASE_URL`、`NINGHARNESS_MODEL`（或 `OPENAI_*`）。
 
 ## 接入
 
 ```go
 require ningharness v0.0.0
-
-// 本地旁路检出：
 replace ningharness => ../ningharness
 ```
 
-嵌入 `toolhost.ToolHost` 挂产品工具，或用 `defaults.Open` 再 `SetGuest` 换模型循环。
+嵌入 `toolhost.ToolHost` 挂产品工具，或 `defaults.Open` + `SetGuest`。
 
 ## 开发
 
@@ -148,7 +133,7 @@ replace ningharness => ../ningharness
 go test ./...
 ```
 
-只需 Go 1.25+（无 Wails / Node / git）。
+只需 Go 1.25+。
 
 ## 许可证
 
