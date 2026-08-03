@@ -2,7 +2,8 @@
 
 **English** | [中文](README.zh-CN.md)
 
-**SQLite-backed agent host foundation.**
+**Pure Go backend framework** for hosting agents (SQLite + ToolHost/MCP).  
+No Wails, Node, or git required—only Go 1.25+.
 
 Owns world truth and the tool gate—not how the model thinks.
 
@@ -10,8 +11,8 @@ Owns world truth and the tool gate—not how the model thinks.
 
 | In scope | Out of scope |
 |----------|--------------|
-| Durable state in `store` (`desk.db`) | Product turnpipe / UI |
-| Workspace I/O + **ToolHost** MCP core tools | Product-specific extensions (git, pins, …) |
+| Durable state in `store` (`desk.db`) | Desktop / UI shells |
+| Workspace I/O + **ToolHost** MCP core tools | Product-specific extensions (VCS UI, pins, …) |
 | Skill contract + Lesson memory | Product Skill pack catalogs |
 | Job / Task ledgers | — |
 | **Optional defaults**: MCP server + Eino Guest | You may replace or disable them |
@@ -141,7 +142,7 @@ Embed `toolhost.ToolHost` for product-specific tools, or call `defaults.Open` an
 go test ./...
 ```
 
-Requires Go 1.25+.
+Requires Go 1.25+ only (no Wails / Node / git).
 
 ## License
 
@@ -151,4 +152,4 @@ Requires Go 1.25+.
 
 **GitHub About**
 
-> SQLite-backed agent host: desk.db, ToolHost/MCP core tools, skill/lesson; optional Eino Guest.
+> Pure Go agent host: desk.db, ToolHost/MCP core tools, skill/lesson; optional Eino Guest. No UI.

@@ -2,7 +2,8 @@
 
 [English](README.md) | **中文**
 
-**带 SQLite 的 Agent 宿主地基。**
+**纯 Go 后端框架**：Agent 宿主（SQLite + ToolHost/MCP）。  
+不依赖 Wails、Node、git，只需 Go 1.25+。
 
 管世界真相与工具闸，不管模型怎么想。
 
@@ -10,8 +11,8 @@
 
 | 本库负责 | 本库不负责 |
 |----------|------------|
-| `store` 持久状态（`desk.db`） | 产品 turnpipe / UI |
-| 工作区 I/O + **ToolHost** MCP 核工具 | 产品扩展（git、pins 等） |
+| `store` 持久状态（`desk.db`） | 桌面 / UI 壳 |
+| 工作区 I/O + **ToolHost** MCP 核工具 | 产品扩展（版本管理 UI、pins 等） |
 | Skill 契约 + Lesson 经验 | 产品 Skill 包目录 |
 | Job / Task 台账 | — |
 | **可选默认**：MCP 服务 + Eino Guest | 可关闭或自行替换 |
@@ -141,7 +142,7 @@ replace ningharness => ../ningharness
 go test ./...
 ```
 
-需要 Go 1.25+。
+只需 Go 1.25+（无 Wails / Node / git）。
 
 ## 许可证
 
@@ -151,4 +152,4 @@ go test ./...
 
 **GitHub About**
 
-> 带 SQLite 的 Agent 宿主地基：台面库、ToolHost/MCP 核工具、Skill/经验；可选默认 Eino Guest。
+> 纯 Go Agent 宿主：台面库、ToolHost/MCP 核工具、Skill/经验；可选 Eino Guest。无 UI。
