@@ -1,24 +1,24 @@
 # ningharness
 
-**SQLite-backed agent host foundation** / **带 SQLite 的 Agent 宿主地基.**
+**English** | [中文](README.zh-CN.md)
 
-Owns world truth and the tool gate—not how the model thinks.  
-管世界真相与工具闸，不管模型怎么想。
+**SQLite-backed agent host foundation.**
 
-## Positioning / 定位
+Owns world truth and the tool gate—not how the model thinks.
 
-| In scope / 本库负责 | Out of scope / 本库不负责 |
-|---------------------|---------------------------|
-| Durable state in `store` (`desk.db`) / 台面库 | Product turnpipe / UI |
-| Workspace I/O + **ToolHost** MCP core tools | Product extensions (git, pins, …) |
-| Skill contract + Lesson memory | Product Skill packs copy |
+## Positioning
+
+| In scope | Out of scope |
+|----------|--------------|
+| Durable state in `store` (`desk.db`) | Product turnpipe / UI |
+| Workspace I/O + **ToolHost** MCP core tools | Product-specific extensions (git, pins, …) |
+| Skill contract + Lesson memory | Product Skill pack catalogs |
 | Job / Task ledgers | — |
 | **Optional defaults**: MCP server + Eino Guest | You may replace or disable them |
 
-Tool truth lives in the host: Guests change the world only through ToolHost—no bypass disk writes. Lessons need human ack.  
-工具真相在宿主：Guest 经 ToolHost 动世界。经验需人 ack。
+Tool truth lives in the host: Guests change the world only through ToolHost—no bypass disk writes. Lessons need human ack.
 
-## Glossary / 术语
+## Glossary
 
 | Term | Meaning |
 |------|---------|
@@ -30,7 +30,7 @@ Tool truth lives in the host: Guests change the world only through ToolHost—no
 | **Skill** | On-disk method pack contract |
 | **Lesson** | Experience entry (ack to own) |
 
-## Packages / 模块
+## Packages
 
 ```text
 ningharness/           Harness Open/Close/UseProject
@@ -43,10 +43,9 @@ ningharness/           Harness Open/Close/UseProject
   defaults/            wire ToolHost + MCP + Eino (opt-in)
 ```
 
-## Quick start — send one message / 发一句话
+## Quick start — send one message
 
-Defaults include **MCP core tools** + **Eino Guest**. Turn either off if you do not want them.  
-默认自带 MCP 核工具与 Eino Guest；可不启用或自行替换。
+Defaults include **MCP core tools** + **Eino Guest**. Turn either off if you do not want them.
 
 ```bash
 export NINGHARNESS_API_KEY=sk-...    # or OPENAI_API_KEY
@@ -94,7 +93,7 @@ func main() {
 }
 ```
 
-### Opt out / 不用默认
+### Opt out
 
 ```go
 // Core only — no MCP, no Eino
@@ -117,15 +116,15 @@ rt, _ := defaults.Open(defaults.Opts{
 rt.SetGuest(myGuest)
 ```
 
-### What defaults wire / 默认装配了什么
+### What defaults wire
 
-1. **ToolHost** + core tools: `list_tree`, `read_file`, `write_file`, `grep`, `edit`, session / skill / lesson / task / queue…  
-2. **MCP HTTP** (`/mcp`) — same tools for Cursor or other MCP clients  
-3. **Eino Guest** — ReAct over a subset of those tools via `ToolHost.Invoke`  
+1. **ToolHost** + core tools: `list_tree`, `read_file`, `write_file`, `grep`, `edit`, session / skill / lesson / task / queue…
+2. **MCP HTTP** (`/mcp`) — same tools for Cursor or other MCP clients
+3. **Eino Guest** — ReAct over a subset of those tools via `ToolHost.Invoke`
 
 Env: `NINGHARNESS_API_KEY` or `OPENAI_API_KEY`; optional `OPENAI_BASE_URL`, `NINGHARNESS_MODEL`.
 
-## Integrate / 接入
+## Integrate
 
 ```go
 require ningharness v0.0.0
@@ -136,7 +135,7 @@ replace ningharness => ../ningharness
 
 Embed `toolhost.ToolHost` for product-specific tools, or call `defaults.Open` and swap Guest with `SetGuest`.
 
-## Develop / 开发
+## Develop
 
 ```bash
 go test ./...
@@ -144,9 +143,12 @@ go test ./...
 
 Requires Go 1.25+.
 
+## License
+
+[MIT](LICENSE)
+
 ---
 
 **GitHub About**
 
-> SQLite-backed agent host: desk.db, ToolHost/MCP core tools, skill/lesson; optional Eino Guest.  
-> 带 SQLite 的 Agent 宿主地基：台面库、ToolHost/MCP 核工具、Skill/经验；可选默认 Eino Guest。
+> SQLite-backed agent host: desk.db, ToolHost/MCP core tools, skill/lesson; optional Eino Guest.
