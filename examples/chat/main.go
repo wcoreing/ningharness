@@ -34,15 +34,13 @@ func main() {
 			DataDir: filepath.Join(abs, ".ningharness-data"),
 			Root:    abs,
 		},
-		// MCPAddr: "" → listen 127.0.0.1:51020 with core tools
-		// WithoutEino: false → default Eino Guest
+		MCPAddr: "off", // one-shot chat; use ./examples/mcp for HTTP
 	})
 	if err != nil {
 		fatal(err)
 	}
 	defer rt.Close()
 
-	fmt.Println("MCP:", rt.MCPURL())
 	reply, err := rt.Chat(context.Background(), msg)
 	if err != nil {
 		fatal(err)

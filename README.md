@@ -52,7 +52,8 @@ Defaults include **MCP core tools** + **Eino Guest**. Turn either off if you do 
 
 ```bash
 go run ./examples/mcp /path/to/project
-# prints MCP URL, e.g. http://127.0.0.1:51020/mcp
+# prints MCP URL (default 127.0.0.1:51020; if busy, picks a free port)
+# override: NINGHARNESS_MCP_ADDR=127.0.0.1:51021
 ```
 
 ### Send one message (Eino Guest)

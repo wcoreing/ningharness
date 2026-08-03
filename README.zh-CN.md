@@ -52,7 +52,8 @@ ningharness/           Harness Open/Close/UseProject
 
 ```bash
 go run ./examples/mcp /path/to/project
-# 打印 MCP 地址，如 http://127.0.0.1:51020/mcp
+# 打印 MCP 地址（默认 127.0.0.1:51020；占用则自动换空闲端口）
+# 指定端口: NINGHARNESS_MCP_ADDR=127.0.0.1:51021
 ```
 
 ### 发一句话（Eino Guest）

@@ -57,7 +57,7 @@ func StartHTTP(cfg HTTPConfig, h *ToolHost) (*HTTPService, error) {
 	}
 	addr := strings.TrimSpace(cfg.Addr)
 	if addr == "" {
-		addr = strings.TrimSpace(os.Getenv("AGENTDESK_MCP_ADDR"))
+		addr = strings.TrimSpace(os.Getenv("NINGHARNESS_MCP_ADDR"))
 	}
 	if addr == "" {
 		addr = DefaultHTTPAddr
@@ -89,7 +89,7 @@ func StartHTTP(cfg HTTPConfig, h *ToolHost) (*HTTPService, error) {
 		_, _ = w.Write([]byte(fmt.Sprintf(`{"ok":true,"name":%q,"mcp":"/mcp"}`, healthName)))
 	}))
 
-	ln, err := net.Listen("tcp", addr)
+	ln, err := listenTCP(addr)
 	if err != nil {
 		return nil, fmt.Errorf("mcp listen %s: %w", addr, err)
 	}
@@ -106,13 +106,36 @@ func StartHTTP(cfg HTTPConfig, h *ToolHost) (*HTTPService, error) {
 		_ = httpSrv.Close()
 		return nil, err
 	}
+	bound := net.JoinHostPort(host, port)
 	svc := &HTTPService{
 		baseURL:    fmt.Sprintf("http://%s:%s", host, port),
-		listenAddr: addr,
+		listenAddr: bound,
 		httpSrv:    httpSrv,
 	}
 	log.Printf("[mcp] http %s", svc.EndpointURL())
 	return svc, nil
+}
+
+// listenTCP binds addr; if that port is busy (and not already :0), retries host:0.
+func listenTCP(addr string) (net.Listener, error) {
+	ln, err := net.Listen("tcp", addr)
+	if err == nil {
+		return ln, nil
+	}
+	if strings.HasSuffix(addr, ":0") {
+		return nil, err
+	}
+	host, _, splitErr := net.SplitHostPort(addr)
+	if splitErr != nil || host == "" {
+		host = "127.0.0.1"
+	}
+	fallback := net.JoinHostPort(host, "0")
+	ln2, err2 := net.Listen("tcp", fallback)
+	if err2 != nil {
+		return nil, err
+	}
+	log.Printf("[mcp] %s busy, using %s", addr, ln2.Addr().String())
+	return ln2, nil
 }
 
 func withCORS(next http.Handler) http.Handler {
