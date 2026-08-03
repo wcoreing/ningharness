@@ -1,4 +1,4 @@
-// Package writetoken 关联本端写盘与 fsnotify（借鉴稿舍 platform/writetoken）。
+// 写盘 token：关联本端写盘与 fsnotify。
 package workspace
 
 import (

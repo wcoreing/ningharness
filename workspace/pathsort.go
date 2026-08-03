@@ -1,4 +1,4 @@
-// Package pathsort 文件名/相对路径排序（第N章章号 + 数字自然序）。
+// Package workspace includes path sorting helpers (names / rel paths).
 package workspace
 
 import (
