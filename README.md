@@ -125,15 +125,16 @@ rt.SetGuest(myGuest)
 
 Env: `NINGHARNESS_API_KEY` or `OPENAI_API_KEY`; optional `OPENAI_BASE_URL`, `NINGHARNESS_MODEL`.
 
-## With AgentDesk / 与 AgentDesk
+## Integrate / 接入
 
 ```go
-// agentdesk/go.mod
 require ningharness v0.0.0
+
+// local sibling checkout:
 replace ningharness => ../ningharness
 ```
 
-Desk embeds `toolhost.ToolHost`, keeps turnpipe + product tools; may use its own Guest instead of `defaults`.
+Embed `toolhost.ToolHost` for product-specific tools, or call `defaults.Open` and swap Guest with `SetGuest`.
 
 ## Develop / 开发
 

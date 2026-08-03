@@ -11,7 +11,7 @@ func RegisterCoreTools(s *server.MCPServer, h *ToolHost) {
 	), h.toolListTree)
 
 	s.AddTool(mcp.NewTool("search_session",
-		mcp.WithDescription("按关键词检索历史对话（~/.agentdesk/desk.db · FTS5/LIKE）。查「上次说过什么 / 上周约定」；项目文件用 recall_project_context；工具返回全文用 recall_resource。"),
+		mcp.WithDescription("按关键词检索历史对话（desk.db · FTS5/LIKE）。查「上次说过什么 / 上周约定」；项目文件用 recall_project_context；工具返回全文用 recall_resource。"),
 		mcp.WithString("query", mcp.Required(), mcp.Description("关键词（可空格分隔）")),
 		mcp.WithNumber("limit", mcp.Description("最多命中条数，默认 12")),
 		mcp.WithString("session_id", mcp.Description("限定会话 id，空=全部会话")),

@@ -104,7 +104,7 @@ func (h *ToolHost) toolSetQueuePaused(_ context.Context, req mcp.CallToolRequest
 
 func (h *ToolHost) requireQueue() (*deskqueue.Manager, error) {
 	if h == nil || h.Queue == nil {
-		return nil, fmt.Errorf("queue requires AgentDesk App（执行器未挂载）")
+		return nil, fmt.Errorf("queue requires Job manager（执行器未挂载）")
 	}
 	root, err := h.root()
 	if err != nil {

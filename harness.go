@@ -14,7 +14,7 @@ import (
 
 // Opts Open 参数。
 type Opts struct {
-	// DataDir 全局 desk.db 所在目录；空则 ~/.agentdesk。
+	// DataDir 全局 desk.db 所在目录；空则默认数据目录。
 	DataDir string
 	// Root 当前项目根；可空，之后 UseProject。
 	Root string
