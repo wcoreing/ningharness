@@ -1,4 +1,4 @@
-package toolhost
+package toolgateway
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
-func (h *ToolHost) toolListSkills(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *Gateway) toolListSkills(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	root, err := h.root()
 	if err != nil {
 		return toolErr("list_skills", err)
@@ -32,7 +32,7 @@ func (h *ToolHost) toolListSkills(_ context.Context, _ mcp.CallToolRequest) (*mc
 	return mcp.NewToolResultText(string(b)), nil
 }
 
-func (h *ToolHost) toolGetSkill(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *Gateway) toolGetSkill(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	root, err := h.root()
 	if err != nil {
 		return toolErr("get_skill", err)
@@ -55,7 +55,7 @@ func (h *ToolHost) toolGetSkill(_ context.Context, req mcp.CallToolRequest) (*mc
 	return mcp.NewToolResultText(text), nil
 }
 
-func (h *ToolHost) toolCreateSkill(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *Gateway) toolCreateSkill(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if _, err := h.root(); err != nil {
 		return toolErr("create_project_skill", err)
 	}

@@ -21,7 +21,7 @@ type StepDiff struct {
 	Lines []StepDiffLine `json:"lines,omitempty"`
 }
 
-// Step UI 回合步骤 DTO：由 history_message 推导；thinking 全文；tool 仅 summary。
+// Step UI 回合步骤 DTO：由 history_message 推导；thinking/text 全文；tool 仅 summary。
 type Step struct {
 	Kind        string    `json:"kind"`
 	Text        string    `json:"text,omitempty"`
@@ -35,7 +35,7 @@ type Step struct {
 	Diff        *StepDiff `json:"diff,omitempty"`
 }
 
-// StepsFromHistory 从 history_message（含 thinking / assistant tool_calls / tool）推导 UI 步骤。
+// StepsFromHistory 从 history_message（thinking / assistant 正文与 tool_calls / tool）推导 UI 步骤。
 func StepsFromHistory(msgs []history.Msg) []Step {
 	if len(msgs) == 0 {
 		return nil
@@ -56,6 +56,9 @@ func StepsFromHistory(msgs []history.Msg) []Step {
 			}
 			out = append(out, Step{Kind: "thinking", Text: text})
 		case "assistant":
+			if text := CleanAssistantText(m.Content); text != "" {
+				out = append(out, Step{Kind: "text", Text: text})
+			}
 			raw := strings.TrimSpace(m.ToolCallsJSON)
 			if raw == "" {
 				continue

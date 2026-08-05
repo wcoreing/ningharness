@@ -17,6 +17,7 @@ func TestFormatSummaryShortNoDump(t *testing.T) {
 		Steps: []Step{
 			{Kind: "thinking", Text: "先读文件"},
 			{Kind: "tool", Name: "read_file", Args: "resource#8", Result: "resource#9", OK: true, Done: true},
+			{Kind: "text", Text: "已读完 a.md"},
 		},
 	}
 	got := FormatSummary(rec)
@@ -25,6 +26,9 @@ func TestFormatSummaryShortNoDump(t *testing.T) {
 	}
 	if !strings.Contains(got, "feedforward:") {
 		t.Fatalf("want feedforward: %s", got)
+	}
+	if !strings.Contains(got, "text=1") || !strings.Contains(got, "last_reply: 已读完") {
+		t.Fatalf("want text reply: %s", got)
 	}
 	if !strings.Contains(got, "#8") || !strings.Contains(got, "#9") {
 		t.Fatalf("want resource ids: %s", got)

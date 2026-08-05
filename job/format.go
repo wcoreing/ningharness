@@ -20,6 +20,14 @@ func FormatEnqueueOK(job Job) string {
 		st = string(StatusQueued)
 	}
 	msg := fmt.Sprintf("%s · id=%s status=%s", enqueueOKPrefix, id, st)
+	if strings.TrimSpace(job.Type) == JobTypeGoal {
+		msg += " · type=goal"
+		if job.GoalMaxRounds > 0 {
+			msg += fmt.Sprintf(" · maxRounds=%d", job.GoalMaxRounds)
+		}
+		msg += " · 改 `.ningharness/goals/<id>/GOAL.yaml` 的 status=complete|blocked 结束外环；list_queue 看进度"
+		return msg
+	}
 	if rel := strings.TrimSpace(job.TargetRel); rel != "" {
 		msg += " · target=`" + rel + "`（执行时注入「本轮只写」）"
 	}
@@ -42,16 +50,19 @@ type AgentStepBrief struct {
 
 // AgentJobBrief Skill/MCP 可读任务摘要。
 type AgentJobBrief struct {
-	ID           string           `json:"id"`
-	Title        string           `json:"title,omitempty"`
-	Status       string           `json:"status"`
-	TargetRel    string           `json:"targetRel,omitempty"`
-	ProgressHint string           `json:"progressHint,omitempty"`
-	StepDone     int              `json:"stepDone,omitempty"`
-	StepTotal    int              `json:"stepTotal,omitempty"`
-	Steps        []AgentStepBrief `json:"steps,omitempty"`
-	Error        string           `json:"error,omitempty"`
-	PromptBrief  string           `json:"promptBrief,omitempty"`
+	ID            string           `json:"id"`
+	Type          string           `json:"type,omitempty"`
+	Title         string           `json:"title,omitempty"`
+	Status        string           `json:"status"`
+	TargetRel     string           `json:"targetRel,omitempty"`
+	ProgressHint  string           `json:"progressHint,omitempty"`
+	StepDone      int              `json:"stepDone,omitempty"`
+	StepTotal     int              `json:"stepTotal,omitempty"`
+	GoalRound     int              `json:"goalRound,omitempty"`
+	GoalMaxRounds int              `json:"goalMaxRounds,omitempty"`
+	Steps         []AgentStepBrief `json:"steps,omitempty"`
+	Error         string           `json:"error,omitempty"`
+	PromptBrief   string           `json:"promptBrief,omitempty"`
 }
 
 // AgentSnapshot list_queue 给 Agent 的结构化快照（无 prompt/FeedExtra 全文）。
@@ -68,7 +79,7 @@ type AgentSnapshot struct {
 // FormatAgentSnapshot 压缩 Snapshot，供 list_queue。
 func FormatAgentSnapshot(snap Snapshot) AgentSnapshot {
 	out := AgentSnapshot{
-		Note:         "入队成功≠落盘；targetRel=执行节「本轮只写」；status=done 仍须 list_tree/read_file 或写盘回执确认正文。jobs 不含 prompt 全文。",
+		Note:         "入队成功≠落盘；targetRel=执行节「本轮只写」；type=goal 看 goalRound / GOAL.yaml status；status=done 仍须 list_tree/read_file 或写盘回执确认正文。jobs 不含 prompt 全文。",
 		Paused:       snap.Paused,
 		PauseOnError: snap.PauseOnError,
 		PauseReason:  snap.PauseReason,
@@ -84,15 +95,18 @@ func FormatAgentSnapshot(snap Snapshot) AgentSnapshot {
 
 func agentJobBrief(j Job) AgentJobBrief {
 	b := AgentJobBrief{
-		ID:           j.ID,
-		Title:        j.Title,
-		Status:       string(j.Status),
-		TargetRel:    j.TargetRel,
-		ProgressHint: j.ProgressHint,
-		StepDone:     j.StepDone,
-		StepTotal:    j.StepTotal,
-		Error:        firstNonEmpty(j.Error, j.LastError),
-		PromptBrief:  trimPromptBrief(j.Prompt),
+		ID:            j.ID,
+		Type:          j.Type,
+		Title:         j.Title,
+		Status:        string(j.Status),
+		TargetRel:     j.TargetRel,
+		ProgressHint:  j.ProgressHint,
+		StepDone:      j.StepDone,
+		StepTotal:     j.StepTotal,
+		GoalRound:     j.GoalRound,
+		GoalMaxRounds: j.GoalMaxRounds,
+		Error:         firstNonEmpty(j.Error, j.LastError),
+		PromptBrief:   trimPromptBrief(j.Prompt),
 	}
 	if len(j.Steps) > 0 {
 		b.Steps = make([]AgentStepBrief, 0, len(j.Steps))

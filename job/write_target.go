@@ -21,7 +21,7 @@ func WriteTargetLine(rel string) string {
 }
 
 // InjectWriteTarget 以 targetRel 为权威落点：去掉旧「本轮只写」单行/多行块后置顶注入。
-// FeedExtra 与 TargetRel 并存时，执行节以 TargetRel 为准，避免写闸读到第一条旧路径。
+// FeedExtra 与 TargetRel 并存时，执行节以 TargetRel 为准，避免写路径解析读到第一条旧路径。
 func InjectWriteTarget(feed, targetRel string) string {
 	feed = strings.TrimSpace(feed)
 	line := WriteTargetLine(targetRel)

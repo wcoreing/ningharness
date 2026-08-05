@@ -1,4 +1,4 @@
-package toolhost
+package toolgateway
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
-func (h *ToolHost) toolAppendSkillNote(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *Gateway) toolAppendSkillNote(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	note, err := req.RequireString("note")
 	if err != nil {
 		return toolErr("append_project_skill_note", err)
@@ -70,7 +70,7 @@ func (h *ToolHost) toolAppendSkillNote(_ context.Context, req mcp.CallToolReques
 	return mcp.NewToolResultText(msg), nil
 }
 
-func (h *ToolHost) toolSetLessonStatus(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *Gateway) toolSetLessonStatus(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	root, err := h.root()
 	if err != nil {
 		return toolErr("set_lesson_status", err)
@@ -89,7 +89,7 @@ func (h *ToolHost) toolSetLessonStatus(_ context.Context, req mcp.CallToolReques
 	return mcp.NewToolResultText(fmt.Sprintf("lesson %s status=%s", strings.TrimSpace(id), strings.TrimSpace(status))), nil
 }
 
-func (h *ToolHost) toolListLessons(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *Gateway) toolListLessons(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	root, _ := h.root()
 	if root != "" {
 		_ = lesson.EnsureImported(root)
@@ -126,7 +126,7 @@ func (h *ToolHost) toolListLessons(_ context.Context, req mcp.CallToolRequest) (
 	return mcp.NewToolResultText(string(b)), nil
 }
 
-func (h *ToolHost) toolAckLesson(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *Gateway) toolAckLesson(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	root, err := h.root()
 	if err != nil {
 		return toolErr("ack_lesson", err)

@@ -2,47 +2,64 @@
 
 **English** | [中文](README.zh-CN.md)
 
-**Pure Go backend framework** for hosting agents (SQLite + ToolHost/MCP).  
+**Pure Go backend framework** for hosting agents (SQLite + Gateway/MCP).  
 No Wails, Node, or git required—only Go 1.25+.
 
-Owns world truth and the tool gate—not how the model thinks.
+Owns world truth and the tool gateway—not how the model thinks.
 
 ## Positioning
 
 | In scope | Out of scope |
 |----------|--------------|
 | Durable state in `store` (`desk.db`) | Desktop / UI shells |
-| Workspace I/O + **ToolHost** MCP core tools | Product-specific extensions (VCS UI, pins, …) |
+| Workspace I/O + **Gateway** MCP core tools | Product-specific extensions (VCS UI, pins, …) |
 | Skill contract + Lesson memory | Product Skill pack catalogs |
 | Job / Task ledgers | — |
+| **Lifecycle** (default steps + event bus) | — |
 | **Optional defaults**: MCP server + Eino Guest | You may replace or disable them |
 
-Tool truth lives in the host: Guests change the world only through ToolHost—no bypass disk writes. Lessons need human ack.
+Tool truth lives in the host: Guests change the world only through Gateway—no bypass disk writes. Lessons need human ack.  
+Each Chat / Job run follows package **`lifecycle`**. Phase boundaries emit on an **event bus** (`On` gate / `Watch` observe) with turn context `RunState`. MCP tools are not lifecycle steps—they run inside `run_guest` via Gateway.
 
 ## Glossary
 
 | Term | Meaning |
 |------|---------|
 | **Harness** | Facade: DB + Session + Job |
-| **ToolHost** | Tool gate + MCP core (register / arm / invoke) |
+| **Lifecycle** | Fixed-phase pipeline for one Task / Chat turn (ordered steps + Bus) |
+| **Bus / Event** | Lifecycle events: `Phase × before\|after`; `On` may Block, `Watch` observes only |
+| **RunState** | Per-turn pipeline context shared by steps and handlers |
+| **Step** | Domain atom (e.g. `begin_task`, `run_guest`); **not** a tool name |
+| **Gateway** | Tool gateway + MCP core (register / authorize / invoke) |
 | **Guest** | Model loop (default: Eino; swappable) |
 | **Task** | One execution ledger |
-| **Job** | Queue unit (may span multiple tasks) |
+| **Job** | Queue unit (schedules when to run a lifecycle; may span multiple tasks) |
+| **Goal** | Outer-loop Job: re-trigger the lifecycle until `GOAL.yaml` status is terminal |
+| **Trace** | Append-only JSONL under `.ningharness/traces/` per Task; resume = paired tool_call/tool_result + task_end |
 | **Skill** | On-disk method pack contract |
 | **Lesson** | Experience entry (ack to own) |
 
-## Packages
+## Packages (by layer)
 
 ```text
-ningharness/           Harness Open/Close/UseProject
-  store                SQLite (file still named desk.db)
-  session history …    working memory
-  task job lesson skill
-  workspace toolhost protocol
-  guest/               Guest interface
-  guest/eino/          optional default Eino Guest
-  defaults/            wire ToolHost + MCP + Eino (opt-in)
+ningharness/           facade Open/Close/UseProject
+  lifecycle/           one turn: steps + Bus + RunState (state.go) + Runner
+  toolgateway/         Gateway + MCP + tool Registry; turn* = projection of RunState
+  workspace/ protocol/ files / shared DTOs
+  store/ session/ history/ resource/
+  task/ job/ goal/ trace/
+  skill/ lesson/       ledgers & memory
+  guest/ (+ eino/)     how the model thinks
+  defaults/            wiring (Host projects RunState → ToolGateway + MCP + Eino)
+  examples/
 ```
+
+Dependency rule: `defaults` → lifecycle / toolgateway / guest; `lifecycle` does not import `toolgateway` (Host injected).
+
+Turn projection: `begin_task` → `Gateway.ProjectTurn`; teardown only via `OnExit` → `FinishTurn` (`end_task` is a Bus hook).  
+`runLifecycle` may wrap ctx with `WithRunState` for Host steps; **Guest stays free of RunState** — tool turn identity is the Gateway projection, not ctx through the model stack.  
+`assemble_context` persists the user row and honors `RunState.Feedforward` (Job `FeedExtra` is mapped in).  
+Tool dispatch: `RegisterHandler` + core `ensureCoreHandlers`; product tools need not edit `CallNamedTool`.
 
 ## Quick start
 
@@ -115,7 +132,7 @@ Run:
 go run ./examples/chat /path/to/project "List files briefly."
 ```
 
-Defaults wire **ToolHost** core tools + **MCP HTTP** (`/mcp`) + **Eino Guest** (ReAct via `ToolHost.Invoke`).  
+Defaults wire **Gateway** core tools + **MCP HTTP** (`/mcp`) + **Eino Guest** (ReAct via `Gateway.Invoke`).  
 `WithoutEino` / `MCPAddr: "off"` / `SetGuest` turn pieces off or replace them. Empty Eino fields fall back to `NINGHARNESS_API_KEY`, `NINGHARNESS_BASE_URL`, `NINGHARNESS_MODEL` (or `OPENAI_*`).
 
 ## Integrate
@@ -125,7 +142,7 @@ require ningharness v0.0.0
 replace ningharness => ../ningharness
 ```
 
-Embed `toolhost.ToolHost` for product tools, or `defaults.Open` + `SetGuest`.
+Embed `toolgateway.Gateway` for product tools, or `defaults.Open` + `SetGuest`.
 
 ## Develop
 
@@ -143,4 +160,4 @@ Requires Go 1.25+ only.
 
 **GitHub About**
 
-> Pure Go agent host: desk.db, ToolHost/MCP core tools, skill/lesson; optional Eino Guest. No UI.
+> Pure Go agent host: desk.db, Gateway/MCP core tools, skill/lesson; optional Eino Guest. No UI.

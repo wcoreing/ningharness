@@ -1,4 +1,4 @@
-package toolhost
+package toolgateway
 
 import (
 	"context"
@@ -48,10 +48,10 @@ type HTTPConfig struct {
 	Version      string
 	Instructions string
 	HealthName   string
-	ExtraRoutes  func(mux *http.ServeMux, h *ToolHost)
+	ExtraRoutes  func(mux *http.ServeMux, h *Gateway)
 }
 
-func StartHTTP(cfg HTTPConfig, h *ToolHost) (*HTTPService, error) {
+func StartHTTP(cfg HTTPConfig, h *Gateway) (*HTTPService, error) {
 	if h == nil {
 		return nil, fmt.Errorf("nil hub")
 	}

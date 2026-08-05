@@ -1,4 +1,4 @@
-// Package guest Guest 契约：跑模型的一方；工具仍须经 ToolHost。
+// Package guest 模型层契约：怎么想；工具仍须经 Gateway（不拥有生命周期定义）。
 package guest
 
 import "context"

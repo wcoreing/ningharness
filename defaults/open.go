@@ -1,17 +1,20 @@
-// Package defaults 可选系统默认装配：ToolHost 核工具 + MCP HTTP + Eino Guest。
-// 仅 Open 根包时不含这些；import defaults 并 Open 才启用。可关掉 MCP / 换掉 Guest。
+// Package defaults 可选装配层：粘合 Harness + ToolGateway + MCP + Guest + Lifecycle Host。
+// 实现 lifecycle.Host（含 RunState→ToolGateway 投影同步）；不定义生命周期步骤表本身。
+// 仅 import defaults 并 Open 才启用；可关掉 MCP / 换掉 Guest。
 package defaults
 
 import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"ningharness"
 	"ningharness/guest"
 	"ningharness/guest/eino"
 	"ningharness/job"
-	"ningharness/toolhost"
+	"ningharness/lifecycle"
+	"ningharness/toolgateway"
 	"ningharness/workspace"
 )
 
@@ -27,15 +30,17 @@ type Opts struct {
 	Eino eino.Opts
 }
 
-// Runtime 带默认 ToolHost / MCP / Guest 的运行时。
+// Runtime 带默认 ToolGateway / MCP / Guest / Lifecycle 的运行时。
 type Runtime struct {
 	*ningharness.Harness
-	ToolHost *toolhost.ToolHost
-	MCP      *toolhost.HTTPService
-	Guest    guest.Guest
+	ToolGateway *toolgateway.Gateway
+	MCP         *toolgateway.HTTPService
+	Guest       guest.Guest
+	// Lifecycle 默认 Task/Chat 生命周期；可 Clone 后改步骤或 SetLifecycle 替换。
+	Lifecycle *lifecycle.Lifecycle
 }
 
-// Open 打开地基并装配默认 ToolHost、核工具 MCP、可选 Eino Guest。
+// Open 打开地基并装配默认 ToolGateway、核工具 MCP、可选 Eino Guest、默认生命周期。
 func Open(opts Opts) (*Runtime, error) {
 	h, err := ningharness.Open(opts.Opts)
 	if err != nil {
@@ -48,7 +53,7 @@ func Open(opts Opts) (*Runtime, error) {
 			return nil, err
 		}
 	}
-	th := toolhost.New(ws, h.Session)
+	th := toolgateway.New(ws, h.Session)
 	th.Queue = h.Job
 	if th.OnWriteWorktree == nil {
 		th.OnWriteWorktree = func(rel, content, writeID string) error {
@@ -56,14 +61,15 @@ func Open(opts Opts) (*Runtime, error) {
 		}
 	}
 
-	rt := &Runtime{Harness: h, ToolHost: th}
+	rt := &Runtime{Harness: h, ToolGateway: th}
+	rt.Lifecycle = lifecycle.NewDefault(rt)
 
 	addr := strings.TrimSpace(opts.MCPAddr)
 	if !isOff(addr) {
 		if addr == "" {
-			addr = toolhost.DefaultHTTPAddr
+			addr = toolgateway.DefaultHTTPAddr
 		}
-		mcp, err := toolhost.StartHTTP(toolhost.HTTPConfig{
+		mcp, err := toolgateway.StartHTTP(toolgateway.HTTPConfig{
 			Addr:         addr,
 			ServerName:   "ningharness",
 			Instructions: "ningharness core tools (files, session, skill, lesson, task, queue)",
@@ -84,36 +90,67 @@ func Open(opts Opts) (*Runtime, error) {
 		rt.Guest = g
 	}
 
-	// Job 默认 Executor：有 Guest 时用 Chat 跑一轮（单步 Job）。
-	if h.Job != nil && rt.Guest != nil {
-		g := rt.Guest
-		h.Job.SetExecutor(func(ctx context.Context, j job.Job) (string, error) {
-			prompt := strings.TrimSpace(j.WirePrompt)
-			if prompt == "" {
-				prompt = strings.TrimSpace(j.Prompt)
-			}
-			reply, err := g.Chat(ctx, prompt)
-			if err != nil {
-				return "", err
-			}
-			taskID := "once:" + j.ID
-			_, _ = h.Session.Append(h.Root(), "", j.SessionKey, "assistant", reply, taskID, "")
-			return taskID, nil
-		})
-	}
-
+	rt.bindJobExecutor()
 	return rt, nil
 }
 
-// SetGuest 替换或清空 Guest（nil=禁用 Chat）。
+func (rt *Runtime) bindJobExecutor() {
+	if rt == nil || rt.Job == nil || rt.Guest == nil {
+		return
+	}
+	rt.Job.SetExecutor(func(ctx context.Context, j job.Job) (string, error) {
+		prompt := strings.TrimSpace(j.WirePrompt)
+		if prompt == "" {
+			prompt = strings.TrimSpace(j.Prompt)
+		}
+		taskID := taskIDForJob(j)
+		sess := strings.TrimSpace(j.SessionKey)
+		st := &lifecycle.RunState{
+			Root:           rt.Root(),
+			SessionKey:     sess,
+			TaskID:         taskID,
+			JobID:          j.ID,
+			Prompt:         prompt,
+			Feedforward:    strings.TrimSpace(j.FeedExtra),
+			SkipUserAppend: true, // 无 FeedExtra 时不落 user；有则 assemble 仍落（带前馈）
+		}
+		if err := rt.runLifecycle(ctx, st); err != nil {
+			return "", err
+		}
+		return taskID, nil
+	})
+}
+
+func (rt *Runtime) runLifecycle(ctx context.Context, st *lifecycle.RunState) error {
+	if rt == nil {
+		return fmt.Errorf("defaults: nil runtime")
+	}
+	lc := rt.Lifecycle
+	if lc == nil {
+		lc = lifecycle.NewDefault(rt)
+	}
+	ctx = lifecycle.WithRunState(ctx, st)
+	return (lifecycle.Runner{}).Run(ctx, lc, st)
+}
+
+// SetGuest 替换或清空 Guest（nil=禁用 Chat）；有 Guest 时重绑 Job Executor。
 func (rt *Runtime) SetGuest(g guest.Guest) {
 	if rt == nil {
 		return
 	}
 	rt.Guest = g
+	rt.bindJobExecutor()
 }
 
-// Chat 用当前 Guest 发一句话；无 Guest 时报错。
+// SetLifecycle 替换生命周期（nil 则下次 run 回退 NewDefault(rt)）。
+func (rt *Runtime) SetLifecycle(lc *lifecycle.Lifecycle) {
+	if rt == nil {
+		return
+	}
+	rt.Lifecycle = lc
+}
+
+// Chat 用当前 Guest 经默认生命周期发一句话；无 Guest 时报错。
 func (rt *Runtime) Chat(ctx context.Context, message string) (string, error) {
 	if rt == nil || rt.Guest == nil {
 		return "", fmt.Errorf("defaults: no Guest (Open with WithoutEino=false or SetGuest)")
@@ -122,18 +159,16 @@ func (rt *Runtime) Chat(ctx context.Context, message string) (string, error) {
 	if msg == "" {
 		return "", fmt.Errorf("defaults: empty message")
 	}
-	root := rt.Root()
-	sess := "main"
-	if _, err := rt.Session.Append(root, "", sess, "user", msg, "", ""); err != nil {
-		// 无项目时 Append 可能失败；仍尝试 Chat
-		_ = err
+	st := &lifecycle.RunState{
+		Root:       rt.Root(),
+		SessionKey: "main",
+		TaskID:     fmt.Sprintf("chat:%d", time.Now().UnixMilli()),
+		Prompt:     msg,
 	}
-	reply, err := rt.Guest.Chat(ctx, msg)
-	if err != nil {
+	if err := rt.runLifecycle(ctx, st); err != nil {
 		return "", err
 	}
-	_, _ = rt.Session.Append(root, "", sess, "assistant", reply, "", "")
-	return reply, nil
+	return st.Reply, nil
 }
 
 // MCPURL 当前 MCP 端点；未启动则空。

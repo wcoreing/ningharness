@@ -1,11 +1,15 @@
-package toolhost
+package toolgateway
 
 import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
 
-func RegisterCoreTools(s *server.MCPServer, h *ToolHost) {
+func RegisterCoreTools(s *server.MCPServer, h *Gateway) {
+	// 与 CallNamedTool 共用 Registry 中的核处理器。
+	if h != nil {
+		h.ensureCoreHandlers()
+	}
 	s.AddTool(mcp.NewTool("list_tree",
 		mcp.WithDescription("列出项目文件树（跳过 .git / node_modules 等）。快照已含路径索引；需要刷新或看 skills 内部时再用。"),
 	), h.toolListTree)
@@ -167,6 +171,12 @@ func RegisterCoreTools(s *server.MCPServer, h *ToolHost) {
 		mcp.WithString("task_id", mcp.Description("task id，可空")),
 	), h.toolGetTaskSummary)
 
+	s.AddTool(mcp.NewTool("get_task_trace",
+		mcp.WithDescription("读取 Task Trace JSONL（.ningharness/traces/…）：事件流 + 恢复契约（complete / unpaired_calls）。可观测/审计。"),
+		mcp.WithString("task_id", mcp.Required(), mcp.Description("task id（如 once:q-… / chat:…）")),
+		mcp.WithNumber("limit", mcp.Description("最多返回末尾事件条数，默认 80")),
+	), h.toolGetTaskTrace)
+
 	s.AddTool(mcp.NewTool("enqueue_agent_turn",
 		mcp.WithDescription("入队一条 agent-turn（成功回执=已入队未落盘；正文由队列节 write_file）。默认侧栏 active；session=isolated 隐藏。需 App。"),
 		mcp.WithString("prompt", mcp.Required(), mcp.Description("任务提示词")),
@@ -175,6 +185,15 @@ func RegisterCoreTools(s *server.MCPServer, h *ToolHost) {
 		mcp.WithString("target_rel", mcp.Description("本轮只写路径（执行时权威注入前馈「本轮只写」；覆盖 FeedExtra 里同名旧行；入队≠落盘）")),
 		mcp.WithString("session", mcp.Description("空/active=侧栏当前会话（可见）；isolated=隐藏 once:queue")),
 	), h.toolEnqueueAgentTurn)
+
+	s.AddTool(mcp.NewTool("enqueue_goal",
+		mcp.WithDescription("入队 Goal 外环（type=goal）：反复跑直到 `.ningharness/goals/<id>/GOAL.yaml` status=complete|blocked 或超 max_rounds。步数未知时用；路径已知用 enqueue_agent_turns_for_paths。回执=已入队未落盘。"),
+		mcp.WithString("objective", mcp.Required(), mcp.Description("目标陈述（正典；勿缩水）")),
+		mcp.WithString("driver", mcp.Description("驱动，空=默认")),
+		mcp.WithString("title", mcp.Description("列表标题")),
+		mcp.WithNumber("max_rounds", mcp.Description("外环硬上限，默认 100")),
+		mcp.WithString("session", mcp.Description("空/active=侧栏当前会话；isolated=隐藏 once:queue")),
+	), h.toolEnqueueGoal)
 
 	s.AddTool(mcp.NewTool("enqueue_agent_turns_for_paths",
 		mcp.WithDescription("按路径入队批任务（回执=已入队未落盘）。内部串行多节；prompt_template 可含 {path}。最多 50 路径。"),
@@ -192,13 +211,19 @@ func RegisterCoreTools(s *server.MCPServer, h *ToolHost) {
 		mcp.WithString("task_id", mcp.Required(), mcp.Description("任务 id")),
 	), h.toolCancelQueueTask)
 
+	s.AddTool(mcp.NewTool("steer_queue_task",
+		mcp.WithDescription("运行中插话（steer）：不取消当前任务；下一工具结果或下一 Goal 轮注入 [user_steering]。task_id 空=当前 running。"),
+		mcp.WithString("text", mcp.Required(), mcp.Description("插话正文")),
+		mcp.WithString("task_id", mcp.Description("任务 id；空=当前 running")),
+	), h.toolSteerQueueTask)
+
 	s.AddTool(mcp.NewTool("set_queue_paused",
 		mcp.WithDescription("暂停/继续队列调度（不取消当前 running，除非再 cancel）。"),
 		mcp.WithBoolean("paused", mcp.Description("true=暂停，默认 true")),
 	), h.toolSetQueuePaused)
 }
 
-func NewMCPServer(h *ToolHost, name, version, instructions string) *server.MCPServer {
+func NewMCPServer(h *Gateway, name, version, instructions string) *server.MCPServer {
 	opts := []server.ServerOption{server.WithToolCapabilities(true)}
 	if instructions != "" {
 		opts = append(opts, server.WithInstructions(instructions))

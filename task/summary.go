@@ -60,7 +60,7 @@ func FormatSummary(rec *Record) string {
 		}
 	}
 
-	thinkN, toolN := 0, 0
+	thinkN, toolN, textN := 0, 0, 0
 	for _, blk := range rec.Steps {
 		switch blk.Kind {
 		case "thinking":
@@ -69,10 +69,21 @@ func FormatSummary(rec *Record) string {
 			toolN++
 			collectResourceIDs(blk.Args, resourceIDs)
 			collectResourceIDs(blk.Result, resourceIDs)
+		case "text":
+			textN++
 		}
 	}
-	if thinkN > 0 || toolN > 0 {
-		fmt.Fprintf(&b, "steps: thinking=%d tool=%d（来自 history；工具全文不在此）\n", thinkN, toolN)
+	if thinkN > 0 || toolN > 0 || textN > 0 {
+		fmt.Fprintf(&b, "steps: thinking=%d tool=%d text=%d（来自 history；工具全文不在此）\n", thinkN, toolN, textN)
+	}
+	for i := len(rec.Steps) - 1; i >= 0; i-- {
+		if rec.Steps[i].Kind != "text" {
+			continue
+		}
+		if t := strings.TrimSpace(rec.Steps[i].Text); t != "" {
+			fmt.Fprintf(&b, "last_reply: %s\n", trimRunes(t, 200))
+			break
+		}
 	}
 	for i := len(rec.Steps) - 1; i >= 0; i-- {
 		if rec.Steps[i].Kind != "thinking" {

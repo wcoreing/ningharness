@@ -1,7 +1,6 @@
 package task
 
 import (
-	"strings"
 	"testing"
 
 	"ningharness/history"
@@ -66,13 +65,34 @@ func TestStepsFromHistoryResourceIDs(t *testing.T) {
 	}
 }
 
-func TestStepsFromHistorySkipUserAssistantText(t *testing.T) {
+func TestStepsFromHistoryAssistantText(t *testing.T) {
 	steps := StepsFromHistory([]history.Msg{
 		{Role: "user", Content: "写"},
 		{Role: "assistant", Content: "好了"},
 	})
-	if len(steps) != 0 {
+	if len(steps) != 1 || steps[0].Kind != "text" || steps[0].Text != "好了" {
 		t.Fatalf("%+v", steps)
 	}
-	_ = strings.TrimSpace
+}
+
+func TestStepsFromHistoryAssistantTextBeforeTools(t *testing.T) {
+	steps := StepsFromHistory([]history.Msg{
+		{Role: "assistant", Content: "先说明", ToolCallsJSON: history.EncodeToolCalls([]history.ToolCallSpec{
+			{ID: "c1", Name: "read_file", Arguments: "{}"},
+		})},
+		{Role: "tool", ToolCallID: "c1", Content: "ok"},
+		{Role: "assistant", Content: "写完了"},
+	})
+	if len(steps) != 3 {
+		t.Fatalf("len=%d %+v", len(steps), steps)
+	}
+	if steps[0].Kind != "text" || steps[0].Text != "先说明" {
+		t.Fatalf("text0=%+v", steps[0])
+	}
+	if steps[1].Kind != "tool" || steps[1].Name != "read_file" || !steps[1].Done {
+		t.Fatalf("tool=%+v", steps[1])
+	}
+	if steps[2].Kind != "text" || steps[2].Text != "写完了" {
+		t.Fatalf("text1=%+v", steps[2])
+	}
 }

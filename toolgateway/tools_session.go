@@ -1,4 +1,4 @@
-package toolhost
+package toolgateway
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
-func (h *ToolHost) toolAppendSession(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *Gateway) toolAppendSession(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	root, err := h.root()
 	if err != nil {
 		return toolErr("append_session_message", err)
@@ -33,7 +33,7 @@ func (h *ToolHost) toolAppendSession(_ context.Context, req mcp.CallToolRequest)
 	return mcp.NewToolResultText("ok\n" + brief), nil
 }
 
-func (h *ToolHost) toolSessionBrief(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *Gateway) toolSessionBrief(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	root, err := h.root()
 	if err != nil {
 		return toolErr("get_session_brief", err)
@@ -47,7 +47,7 @@ func (h *ToolHost) toolSessionBrief(_ context.Context, req mcp.CallToolRequest) 
 	return mcp.NewToolResultText(brief), nil
 }
 
-func (h *ToolHost) toolSearchSession(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *Gateway) toolSearchSession(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	root, err := h.root()
 	if err != nil {
 		return toolErr("search_session", err)
@@ -69,7 +69,7 @@ func (h *ToolHost) toolSearchSession(_ context.Context, req mcp.CallToolRequest)
 	return mcp.NewToolResultText(text), nil
 }
 
-func (h *ToolHost) toolRecallResource(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *Gateway) toolRecallResource(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	root, err := h.root()
 	if err != nil {
 		return toolErr("recall_resource", err)

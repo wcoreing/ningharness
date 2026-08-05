@@ -1,4 +1,4 @@
-package toolhost
+package toolgateway
 
 import (
 	"encoding/json"

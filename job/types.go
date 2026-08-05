@@ -27,6 +27,12 @@ const (
 // JobTypeAgentTurn 一条 prompt → 一轮或多轮串行 agentkit.Run。
 const JobTypeAgentTurn = "agent-turn"
 
+// JobTypeGoal 外环：反复跑 Executor，直到 GOAL.yaml status 终态或超轮。
+const JobTypeGoal = "goal"
+
+// DefaultGoalMaxRounds Goal 外环默认硬上限。
+const DefaultGoalMaxRounds = 100
+
 // DefaultPathPrompt MCP/空模板时的兜底。
 const DefaultPathPrompt = `请按任务说明处理本节。完成后聊天只回路径与短确认，不要贴全文。`
 
@@ -74,6 +80,11 @@ type Job struct {
 	StepDone   int    `json:"stepDone,omitempty"`
 	StepTotal  int    `json:"stepTotal,omitempty"`
 	ProgressHint string `json:"progressHint,omitempty"`
+
+	GoalMaxRounds int `json:"goalMaxRounds,omitempty"`
+	GoalRound     int `json:"goalRound,omitempty"`
+	// SteerPending 运行中插话（人引导）；下一工具结果或下一 Goal 轮注入后清空。
+	SteerPending string `json:"steerPending,omitempty"`
 }
 
 // File 落盘格式。

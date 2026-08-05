@@ -27,8 +27,8 @@ func TestOpenWithoutEinoAndMCP(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer rt.Close()
-	if rt.ToolHost == nil {
-		t.Fatal("ToolHost required")
+	if rt.ToolGateway == nil {
+		t.Fatal("ToolGateway required")
 	}
 	if rt.MCP != nil {
 		t.Fatal("MCP should be off")

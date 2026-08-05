@@ -25,7 +25,7 @@ func FormatToolDigestLines(tools []ToolCall) []string {
 	return parts
 }
 
-// CleanAssistantText 去掉正文里的 `[Desk tools: …]` 行与写闸纠偏注。
+// CleanAssistantText 去掉正文里的 `[Desk tools: …]` 行与写路径纠偏注。
 func CleanAssistantText(body string) string {
 	body = strings.ReplaceAll(body, "\n\n（系统：本轮未见写盘成功回执，上文未落盘。）", "")
 	body = strings.ReplaceAll(body, "（系统：本轮未见写盘成功回执，上文未落盘。）", "")

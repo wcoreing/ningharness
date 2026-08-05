@@ -55,6 +55,16 @@ func TestFormatEnqueueOK(t *testing.T) {
 	if strings.Contains(msg, "Successfully wrote") {
 		t.Fatal("enqueue must not look like write success")
 	}
+	goal := FormatEnqueueOK(Job{
+		ID:            "q-g",
+		Type:          JobTypeGoal,
+		Status:        StatusQueued,
+		GoalMaxRounds: 20,
+		Prompt:        "until green",
+	})
+	if !strings.Contains(goal, "type=goal") || !strings.Contains(goal, "maxRounds=20") || !strings.Contains(goal, "GOAL.yaml") {
+		t.Fatalf("goal=%s", goal)
+	}
 }
 
 func TestFormatAgentSnapshotOmitsPrompt(t *testing.T) {

@@ -32,6 +32,43 @@ var schemaMigrations = map[int]migrateFn{
 	20: migrateToV20,
 	21: migrateToV21,
 	22: migrateToV22,
+	23: migrateToV23,
+	24: migrateToV24,
+}
+
+func migrateToV24(tx *sql.Tx) error {
+	has, err := columnExists(tx, "jobs", "steer_pending")
+	if err != nil {
+		return err
+	}
+	if !has {
+		if _, err := tx.Exec(`ALTER TABLE jobs ADD COLUMN steer_pending TEXT NOT NULL DEFAULT ''`); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func migrateToV23(tx *sql.Tx) error {
+	hasMax, err := columnExists(tx, "jobs", "goal_max_rounds")
+	if err != nil {
+		return err
+	}
+	if !hasMax {
+		if _, err := tx.Exec(`ALTER TABLE jobs ADD COLUMN goal_max_rounds INTEGER NOT NULL DEFAULT 0`); err != nil {
+			return err
+		}
+	}
+	hasRound, err := columnExists(tx, "jobs", "goal_round")
+	if err != nil {
+		return err
+	}
+	if !hasRound {
+		if _, err := tx.Exec(`ALTER TABLE jobs ADD COLUMN goal_round INTEGER NOT NULL DEFAULT 0`); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func migrateToV22(tx *sql.Tx) error {

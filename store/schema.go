@@ -1,7 +1,7 @@
 package store
 
 // CurrentSchemaVersion 当前统一库版本；升级走 numbered migrations。
-const CurrentSchemaVersion = 22
+const CurrentSchemaVersion = 24
 
 // unifiedSchemaSQL 全新库：jobs=队列，tasks=执行台账；对话 SSOT=history_message；正文外置=resource。
 const unifiedSchemaSQL = `
@@ -73,6 +73,9 @@ CREATE TABLE IF NOT EXISTS jobs (
   step_done INTEGER NOT NULL DEFAULT 0,
   step_total INTEGER NOT NULL DEFAULT 0,
   progress_hint TEXT NOT NULL DEFAULT '',
+  goal_max_rounds INTEGER NOT NULL DEFAULT 0,
+  goal_round INTEGER NOT NULL DEFAULT 0,
+  steer_pending TEXT NOT NULL DEFAULT '',
   sort_ord INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (project_id, id)
 );

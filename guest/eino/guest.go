@@ -1,4 +1,4 @@
-// Package eino 可选默认 Guest：Eino ReAct + ToolHost.Invoke 核工具。
+// Package eino 可选默认 Guest：Eino ReAct + Gateway.Invoke 核工具。
 // 不 import 本包则不拉起 Eino；也可用自备 Guest 替换。
 package eino
 
@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"ningharness/guest"
-	"ningharness/toolhost"
+	"ningharness/toolgateway"
 
 	"github.com/cloudwego/eino/adk"
 	"github.com/cloudwego/eino/components/tool"
@@ -32,10 +32,10 @@ type Opts struct {
 	MaxIters    int // 默认 24
 }
 
-// New 构造默认 Eino Guest；host 不可空。
-func New(host *toolhost.ToolHost, opts Opts) (guest.Guest, error) {
-	if host == nil {
-		return nil, fmt.Errorf("eino guest: nil ToolHost")
+// New 构造默认 Eino Guest；gw 不可空。
+func New(gw *toolgateway.Gateway, opts Opts) (guest.Guest, error) {
+	if gw == nil {
+		return nil, fmt.Errorf("eino guest: nil Gateway")
 	}
 	apiKey := strings.TrimSpace(opts.APIKey)
 	if apiKey == "" {
@@ -81,12 +81,12 @@ func New(host *toolhost.ToolHost, opts Opts) (guest.Guest, error) {
 	if err != nil {
 		return nil, fmt.Errorf("eino guest model: %w", err)
 	}
-	tools, err := buildTools(host)
+	tools, err := buildTools(gw)
 	if err != nil {
 		return nil, err
 	}
 	return &einoGuest{
-		host:        host,
+		gw:          gw,
 		cm:          cm,
 		tools:       tools,
 		instruction: instruction,
@@ -96,7 +96,7 @@ func New(host *toolhost.ToolHost, opts Opts) (guest.Guest, error) {
 }
 
 type einoGuest struct {
-	host        *toolhost.ToolHost
+	gw          *toolgateway.Gateway
 	cm          *openai.ChatModel
 	tools       []tool.BaseTool
 	instruction string
@@ -178,13 +178,13 @@ type grepArgs struct {
 
 type emptyArgs struct{}
 
-func buildTools(host *toolhost.ToolHost) ([]tool.BaseTool, error) {
+func buildTools(gw *toolgateway.Gateway) ([]tool.BaseTool, error) {
 	invoke := func(ctx context.Context, name string, args any) (string, error) {
 		raw, err := json.Marshal(args)
 		if err != nil {
 			return "", err
 		}
-		return host.Invoke(ctx, name, string(raw))
+		return gw.Invoke(ctx, name, string(raw))
 	}
 	readT, err := toolutils.InferTool("read_file", "Read a text file under the project root",
 		func(ctx context.Context, in fileArgs) (string, error) {

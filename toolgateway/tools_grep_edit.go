@@ -1,4 +1,4 @@
-package toolhost
+package toolgateway
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
-func (h *ToolHost) toolGrep(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *Gateway) toolGrep(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if _, err := h.contentRoot(); err != nil {
 		return toolErr("grep", err)
 	}
@@ -36,7 +36,7 @@ func (h *ToolHost) toolGrep(_ context.Context, req mcp.CallToolRequest) (*mcp.Ca
 	return mcp.NewToolResultText(workspace.FormatGrepHits(pattern, hits, max)), nil
 }
 
-func (h *ToolHost) toolEdit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *Gateway) toolEdit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	if _, err := h.root(); err != nil {
 		return toolErr("edit", err)
 	}

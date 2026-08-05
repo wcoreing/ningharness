@@ -9,6 +9,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"ningharness/goal"
 )
 
 // Executor 执行单条 agent-turn（同步；取消靠 ctx）。
@@ -19,18 +21,18 @@ type ProgressHook func(job Job, kind ProgressKind)
 
 // Manager 每项目一份队列；最多 MaxParallel 路并发执行 Executor。
 type Manager struct {
-	mu          sync.Mutex
-	root        string
-	file        File
-	exec        Executor
+	mu            sync.Mutex
+	root          string
+	file          File
+	exec          Executor
 	onChange    func(Snapshot)
 	onProgress  ProgressHook
 	maxParallel int
-	running     map[string]context.CancelFunc // taskID → cancel
-	kick        chan struct{}
-	stop        chan struct{}
-	stopped     bool
-	loopStarted bool
+	running       map[string]context.CancelFunc // taskID → cancel
+	kick          chan struct{}
+	stop          chan struct{}
+	stopped       bool
+	loopStarted   bool
 }
 
 // DefaultMaxParallel 默认并发度（可 SetMaxParallel）。
@@ -367,6 +369,54 @@ func (m *Manager) EnqueueSession(prompt, driver, title, targetRel, sessionKey, p
 	return t, nil
 }
 
+// EnqueueGoal 入队 Goal 外环：Prompt=objective；反复 Executor 直到 GOAL.yaml 终态或超轮。
+// sessionKey 空则 once:queue:{id}。maxRounds<1 则 DefaultGoalMaxRounds。
+func (m *Manager) EnqueueGoal(objective, driver, title, sessionKey, purpose, model string, maxRounds int) (Job, error) {
+	objective = strings.TrimSpace(objective)
+	if objective == "" {
+		return Job{}, fmt.Errorf("job: objective empty")
+	}
+	if maxRounds < 1 {
+		maxRounds = DefaultGoalMaxRounds
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if strings.TrimSpace(m.root) == "" {
+		return Job{}, fmt.Errorf("job: no project")
+	}
+	now := time.Now().UnixMilli()
+	id := newID("q")
+	sk := strings.TrimSpace(sessionKey)
+	if sk == "" {
+		sk = QueueSessionKey(id)
+	}
+	t := Job{
+		ID:            id,
+		Type:          JobTypeGoal,
+		Title:         strings.TrimSpace(title),
+		Prompt:        objective,
+		Driver:        strings.TrimSpace(driver),
+		Model:         strings.TrimSpace(model),
+		Status:        StatusQueued,
+		CreatedAt:     now,
+		SessionKey:    sk,
+		Purpose:       strings.TrimSpace(purpose),
+		GoalMaxRounds: maxRounds,
+	}
+	if t.Title == "" {
+		t.Title = titleFromPrompt(objective, "")
+	}
+	m.file.Jobs = append(m.file.Jobs, t)
+	m.clearPauseLocked()
+	if err := saveFile(m.root, m.file); err != nil {
+		return Job{}, err
+	}
+	m.ensureLoopLocked()
+	m.emitLocked()
+	m.requestKickLocked()
+	return t, nil
+}
+
 // EnqueuePaths 按路径批量入队：一条任务内串行多节。
 // sessionKey 空则 once:queue:{id}（批处理隔离；对话入队请用 EnqueueSession/active）。
 // 侧栏勾选入队应传入 activeSessionId 以续接对话记忆。
@@ -563,6 +613,7 @@ func (m *Manager) Cancel(taskID string) error {
 		case StatusQueued:
 			t.Status = StatusCancelled
 			t.FinishedAt = now
+			m.flushOrphanSteerLocked(t)
 		case StatusRunning:
 			if cancel, ok := m.running[taskID]; ok {
 				cancel()
@@ -571,6 +622,7 @@ func (m *Manager) Cancel(taskID string) error {
 			t.Status = StatusCancelled
 			t.FinishedAt = now
 			t.Error = "cancelled"
+			m.flushOrphanSteerLocked(t)
 		default:
 			return fmt.Errorf("job: task not cancellable (%s)", t.Status)
 		}
@@ -1038,6 +1090,10 @@ func (m *Manager) tryStartOne() (Job, context.Context, bool) {
 }
 
 func (m *Manager) runOne(ctx context.Context, job Job) {
+	if job.Type == JobTypeGoal {
+		m.runGoal(ctx, job)
+		return
+	}
 	if len(job.Steps) > 0 {
 		m.runSteps(ctx, job)
 		return
@@ -1077,6 +1133,130 @@ func (m *Manager) runOne(ctx context.Context, job Job) {
 			t.Error = ""
 			kind = ProgressDone
 		}
+		m.flushOrphanSteerLocked(t)
+		done = cloneJob(*t)
+		break
+	}
+	_ = saveFile(m.root, m.file)
+	m.emitLocked()
+	if !m.file.Paused {
+		m.requestKickLocked()
+	}
+	m.mu.Unlock()
+	if kind != "" {
+		m.fireProgress(done, kind)
+	}
+}
+
+func goalControlPath(root, jobID string) string {
+	return filepath.Join(root, ".ningharness", "goals", jobID, "GOAL.yaml")
+}
+
+func (m *Manager) runGoal(ctx context.Context, job Job) {
+	root := m.root
+	control := goalControlPath(root, job.ID)
+	planRel := filepath.ToSlash(filepath.Join(".ningharness", "goals", job.ID, "PLAN.md"))
+	maxRounds := job.GoalMaxRounds
+	if maxRounds < 1 {
+		maxRounds = DefaultGoalMaxRounds
+	}
+	var lastRunID string
+	outcome, err := goal.Run(ctx, goal.Spec{
+		Objective:   job.Prompt,
+		ControlPath: control,
+		PlanRel:     planRel,
+		MaxRounds:   maxRounds,
+	}, func(ctx context.Context, wire string, round int) error {
+		m.mu.Lock()
+		var roundJob Job
+		ok := false
+		for i := range m.file.Jobs {
+			if m.file.Jobs[i].ID != job.ID {
+				continue
+			}
+			t := &m.file.Jobs[i]
+			if t.Status == StatusCancelled {
+				m.mu.Unlock()
+				return context.Canceled
+			}
+			t.GoalRound = round
+			t.GoalMaxRounds = maxRounds
+			t.ProgressHint = fmt.Sprintf("目标 · 第 %d 轮", round)
+			if steer := m.takeSteerPendingLocked(job.ID); steer != "" {
+				wire = wire + "\n\n" + FormatSteerBlock(steer)
+				t.ProgressHint = fmt.Sprintf("目标 · 第 %d 轮 · 已注入插话", round)
+			}
+			roundJob = cloneJob(*t)
+			roundJob.WirePrompt = wire
+			roundJob.Prompt = wire
+			_ = saveFile(m.root, m.file)
+			m.emitLocked()
+			ok = true
+			break
+		}
+		m.mu.Unlock()
+		if !ok {
+			return fmt.Errorf("job: goal %s missing", job.ID)
+		}
+		m.fireProgress(roundJob, ProgressStep)
+		runID, execErr := m.exec(ctx, roundJob)
+		lastRunID = runID
+		return execErr
+	}, nil)
+
+	m.finishGoal(job.ID, lastRunID, outcome, err, ctx.Err() != nil)
+}
+
+func (m *Manager) finishGoal(jobID, lastRunID string, outcome goal.Outcome, err error, cancelled bool) {
+	m.mu.Lock()
+	var done Job
+	var kind ProgressKind
+	delete(m.running, jobID)
+	for i := range m.file.Jobs {
+		if m.file.Jobs[i].ID != jobID {
+			continue
+		}
+		t := &m.file.Jobs[i]
+		if t.Status == StatusCancelled {
+			break
+		}
+		t.TaskID = strings.TrimSpace(lastRunID)
+		t.FinishedAt = time.Now().UnixMilli()
+		abortCancel := cancelled || (outcome == goal.OutcomeAborted && err != nil &&
+			(strings.Contains(err.Error(), "context canceled") || strings.Contains(err.Error(), "context cancelled")))
+		switch {
+		case abortCancel:
+			t.Status = StatusCancelled
+			t.Error = "cancelled"
+			kind = ProgressCancelled
+			t.ProgressHint = fmt.Sprintf("目标中断 · 第 %d 轮", t.GoalRound)
+		case outcome == goal.OutcomeComplete || outcome == goal.OutcomeBlocked:
+			t.Status = StatusDone
+			t.Error = ""
+			kind = ProgressDone
+			if outcome == goal.OutcomeBlocked {
+				t.ProgressHint = fmt.Sprintf("目标受阻 · 第 %d 轮", t.GoalRound)
+			} else {
+				t.ProgressHint = fmt.Sprintf("目标完成 · 第 %d 轮", t.GoalRound)
+			}
+		default:
+			t.Status = StatusError
+			msg := "goal failed"
+			if err != nil {
+				msg = err.Error()
+			} else if outcome == goal.OutcomeMaxRounds {
+				msg = fmt.Sprintf("goal: max rounds %d", t.GoalMaxRounds)
+			}
+			t.Error = msg
+			t.LastError = msg
+			kind = ProgressError
+			t.ProgressHint = fmt.Sprintf("目标失败 · 第 %d 轮", t.GoalRound)
+			if m.file.PauseOnError {
+				m.file.Paused = true
+				m.file.PauseReason = "上一任务失败：" + trimReason(msg, 120)
+			}
+		}
+		m.flushOrphanSteerLocked(t)
 		done = cloneJob(*t)
 		break
 	}
@@ -1229,6 +1409,7 @@ func (m *Manager) failStep(taskID string, stepIdx int, runID string, err error, 
 		t.StepDone = countStepDone(t.Steps)
 		t.StepTotal = len(t.Steps)
 		t.ProgressHint = fmt.Sprintf("失败 · %d/%d", t.StepDone, t.StepTotal)
+		m.flushOrphanSteerLocked(t)
 		done = cloneJob(*t)
 		break
 	}
@@ -1282,6 +1463,7 @@ func (m *Manager) finishJobAfterSteps(taskID, lastRunID string, err error, cance
 			kind = ProgressDone
 			t.ProgressHint = fmt.Sprintf("完成 · %d/%d", t.StepDone, t.StepTotal)
 		}
+		m.flushOrphanSteerLocked(t)
 		done = cloneJob(*t)
 		break
 	}

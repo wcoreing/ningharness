@@ -1,5 +1,11 @@
-// Package ningharness 带 SQLite 的 Agent 宿主地基。
-// 含 session/history/task/job/lesson/skill；ToolHost/MCP/Eino 见 defaults 包（可选）。
+// Package ningharness 是 Agent 宿主门面：Open / UseProject / Close（DB + Session + Job）。
+//
+// 层划分（扁平包，靠依赖方向表达架构）：
+//   - lifecycle：一轮怎么跑（步骤 + Bus + RunState）
+//   - toolgateway / workspace：工具网关与文件世界（turn* 为 RunState 投影）
+//   - store / session / history / resource / task / job / goal / trace / skill / lesson：台账与记忆
+//   - guest：模型怎么想
+//   - defaults：可选装配（Lifecycle Host + MCP + Eino）
 package ningharness
 
 import (
