@@ -23,7 +23,10 @@ func Run(ctx context.Context, spec Spec, exec RoundExec, onProgress ProgressFunc
 		return OutcomeAborted, fmt.Errorf("goal: empty control path")
 	}
 	maxRounds := maxRoundsOrDefault(spec.MaxRounds)
-	if err := WriteOnce(control, obj); err != nil {
+	if err := WriteFile(control, File{
+		Objective: obj,
+		Status:    StatusActive,
+	}); err != nil {
 		return OutcomeAborted, err
 	}
 	spec.Objective = obj

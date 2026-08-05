@@ -34,6 +34,20 @@ var schemaMigrations = map[int]migrateFn{
 	22: migrateToV22,
 	23: migrateToV23,
 	24: migrateToV24,
+	25: migrateToV25,
+}
+
+func migrateToV25(tx *sql.Tx) error {
+	has, err := columnExists(tx, "jobs", "goal_next")
+	if err != nil {
+		return err
+	}
+	if !has {
+		if _, err := tx.Exec(`ALTER TABLE jobs ADD COLUMN goal_next TEXT NOT NULL DEFAULT ''`); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func migrateToV24(tx *sql.Tx) error {

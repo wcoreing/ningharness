@@ -370,12 +370,12 @@ func (m *Manager) EnqueueSession(prompt, driver, title, targetRel, sessionKey, p
 }
 
 // EnqueueGoal 入队 Goal 外环：Prompt=objective；反复 Executor 直到 GOAL.yaml 终态或超轮。
-// sessionKey 空则 once:queue:{id}。maxRounds<1 则 DefaultGoalMaxRounds。
-func (m *Manager) EnqueueGoal(objective, driver, title, sessionKey, purpose, model string, maxRounds int) (Job, error) {
-	objective = strings.TrimSpace(objective)
+func (m *Manager) EnqueueGoal(in GoalEnqueue) (Job, error) {
+	objective := strings.TrimSpace(in.Objective)
 	if objective == "" {
 		return Job{}, fmt.Errorf("job: objective empty")
 	}
+	maxRounds := in.MaxRounds
 	if maxRounds < 1 {
 		maxRounds = DefaultGoalMaxRounds
 	}
@@ -386,21 +386,22 @@ func (m *Manager) EnqueueGoal(objective, driver, title, sessionKey, purpose, mod
 	}
 	now := time.Now().UnixMilli()
 	id := newID("q")
-	sk := strings.TrimSpace(sessionKey)
+	sk := strings.TrimSpace(in.SessionKey)
 	if sk == "" {
 		sk = QueueSessionKey(id)
 	}
 	t := Job{
 		ID:            id,
 		Type:          JobTypeGoal,
-		Title:         strings.TrimSpace(title),
+		Title:         strings.TrimSpace(in.Title),
 		Prompt:        objective,
-		Driver:        strings.TrimSpace(driver),
-		Model:         strings.TrimSpace(model),
+		Driver:        strings.TrimSpace(in.Driver),
+		Model:         strings.TrimSpace(in.Model),
 		Status:        StatusQueued,
 		CreatedAt:     now,
 		SessionKey:    sk,
-		Purpose:       strings.TrimSpace(purpose),
+		Purpose:       strings.TrimSpace(in.Purpose),
+		FeedExtra:     strings.TrimSpace(in.FeedExtra),
 		GoalMaxRounds: maxRounds,
 	}
 	if t.Title == "" {
@@ -1152,6 +1153,11 @@ func goalControlPath(root, jobID string) string {
 	return filepath.Join(root, ".ningharness", "goals", jobID, "GOAL.yaml")
 }
 
+// GoalControlPath 项目根下 GOAL.yaml 绝对路径。
+func GoalControlPath(root, jobID string) string {
+	return goalControlPath(root, jobID)
+}
+
 func (m *Manager) runGoal(ctx context.Context, job Job) {
 	root := m.root
 	control := goalControlPath(root, job.ID)
@@ -1497,3 +1503,4 @@ func titleFromPrompt(prompt, targetRel string) string {
 	}
 	return string(r)
 }
+

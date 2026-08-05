@@ -41,7 +41,7 @@ func loadFile(root string) (File, error) {
 
 	rows, err := db.Query(`SELECT id, type, title, prompt, driver, model, target_rel, status, task_id, error, last_error,
 		retry_count, batch_id, created_at, started_at, finished_at, session_key, purpose, feed_extra,
-		step_done, step_total, progress_hint, goal_max_rounds, goal_round, steer_pending, sort_ord FROM jobs WHERE project_id=? ORDER BY sort_ord ASC, created_at ASC`, pid)
+		step_done, step_total, progress_hint, goal_max_rounds, goal_round, goal_next, steer_pending, sort_ord FROM jobs WHERE project_id=? ORDER BY sort_ord ASC, created_at ASC`, pid)
 	if err != nil {
 		return File{}, err
 	}
@@ -54,7 +54,7 @@ func loadFile(root string) (File, error) {
 		var h head
 		if err := rows.Scan(&h.j.ID, &h.j.Type, &h.j.Title, &h.j.Prompt, &h.j.Driver, &h.j.Model, &h.j.TargetRel, &h.j.Status, &h.j.TaskID, &h.j.Error, &h.j.LastError,
 			&h.j.RetryCount, &h.j.BatchID, &h.j.CreatedAt, &h.j.StartedAt, &h.j.FinishedAt, &h.j.SessionKey, &h.j.Purpose, &h.j.FeedExtra,
-			&h.j.StepDone, &h.j.StepTotal, &h.j.ProgressHint, &h.j.GoalMaxRounds, &h.j.GoalRound, &h.j.SteerPending, &h.ord); err != nil {
+			&h.j.StepDone, &h.j.StepTotal, &h.j.ProgressHint, &h.j.GoalMaxRounds, &h.j.GoalRound, &h.j.GoalNext, &h.j.SteerPending, &h.ord); err != nil {
 			rows.Close()
 			return File{}, err
 		}
@@ -149,11 +149,11 @@ func saveFile(root string, f File) error {
 		if _, err := tx.Exec(`INSERT INTO jobs(
 			project_id, id, type, title, prompt, driver, model, target_rel, status, task_id, error, last_error,
 			retry_count, batch_id, created_at, started_at, finished_at, session_key, purpose, feed_extra,
-			step_done, step_total, progress_hint, goal_max_rounds, goal_round, steer_pending, sort_ord)
-			VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+			step_done, step_total, progress_hint, goal_max_rounds, goal_round, goal_next, steer_pending, sort_ord)
+			VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 			pid, job.ID, job.Type, job.Title, job.Prompt, job.Driver, job.Model, job.TargetRel, string(job.Status), job.TaskID, job.Error, job.LastError,
 			job.RetryCount, job.BatchID, job.CreatedAt, job.StartedAt, job.FinishedAt, job.SessionKey, job.Purpose, job.FeedExtra,
-			job.StepDone, job.StepTotal, job.ProgressHint, job.GoalMaxRounds, job.GoalRound, job.SteerPending, i); err != nil {
+			job.StepDone, job.StepTotal, job.ProgressHint, job.GoalMaxRounds, job.GoalRound, job.GoalNext, job.SteerPending, i); err != nil {
 			return err
 		}
 		for j, s := range job.Steps {

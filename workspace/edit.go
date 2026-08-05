@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	
+	"ningharness/contextpatch"
 )
 
 // ApplyEdit 在正文中替换 old→new。replaceAll=false 时 old 必须恰好出现一次。
@@ -40,5 +40,5 @@ func FormatEditOK(rel string, replacements int, content, writeID string) string 
 	if wid := strings.TrimSpace(writeID); wid != "" {
 		msg += " writeId=" + wid
 	}
-	return msg
+	return contextpatch.Append(msg, contextpatch.FileEdited(rel, n, writeID))
 }

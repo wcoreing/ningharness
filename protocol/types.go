@@ -18,6 +18,9 @@ const ProjectOpenedEventName = "project-opened"
 // SessionChangedEventName 会话落盘后通知 UI 刷新 SessionBar。
 const SessionChangedEventName = "session-changed"
 
+// ContextPatchEventName 台面 ContextPatch（pin/写盘）；同轮进模靠工具回执内 Patch，开场前馈不热改。
+const ContextPatchEventName = "context-patch"
+
 // AgentEventName agentkit 流式事件（与落盘雷达分离；FE 可选订，勿塞进 protocol workspace store）。
 const AgentEventName = "agent-event"
 

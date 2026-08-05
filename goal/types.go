@@ -29,4 +29,6 @@ type Spec struct {
 type File struct {
 	Objective string `yaml:"objective"`
 	Status    Status `yaml:"status"`
+	// Next 遗留字段（旧 GOAL.yaml 可能仍有）；Desk 不再据此推进工序。读入保留、不强制写入。
+	Next string `yaml:"next,omitempty"`
 }

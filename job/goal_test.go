@@ -52,7 +52,7 @@ func TestEnqueueGoalAndRun(t *testing.T) {
 		return "r2", nil
 	}, nil)
 	m.Bind(root)
-	job, err := m.EnqueueGoal("ship", "", "g", "", "", "", 10)
+	job, err := m.EnqueueGoal(GoalEnqueue{Objective: "ship", Title: "g", MaxRounds: 10})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +78,7 @@ func TestEnqueueGoalMaxRounds(t *testing.T) {
 		return "r", nil
 	}, nil)
 	m.Bind(root)
-	job, err := m.EnqueueGoal("never", "", "g", "", "", "", 2)
+	job, err := m.EnqueueGoal(GoalEnqueue{Objective: "never", Title: "g", MaxRounds: 2})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func TestEnqueueGoalCancel(t *testing.T) {
 		return "", ctx.Err()
 	}, nil)
 	m.Bind(root)
-	job, err := m.EnqueueGoal("abort", "", "g", "", "", "", 10)
+	job, err := m.EnqueueGoal(GoalEnqueue{Objective: "abort", Title: "g", MaxRounds: 10})
 	if err != nil {
 		t.Fatal(err)
 	}

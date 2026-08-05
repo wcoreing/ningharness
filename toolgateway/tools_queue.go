@@ -60,7 +60,13 @@ func (h *Gateway) toolEnqueueGoal(_ context.Context, req mcp.CallToolRequest) (*
 	default:
 		sessionKey = h.activeSessionKey()
 	}
-	task, err := q.EnqueueGoal(objective, req.GetString("driver", ""), req.GetString("title", ""), sessionKey, "", "", maxRounds)
+	task, err := q.EnqueueGoal(deskqueue.GoalEnqueue{
+		Objective:  objective,
+		Driver:     req.GetString("driver", ""),
+		Title:      req.GetString("title", ""),
+		SessionKey: sessionKey,
+		MaxRounds:  maxRounds,
+	})
 	if err != nil {
 		return toolErr("enqueue_goal", err)
 	}

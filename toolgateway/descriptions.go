@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"ningharness/contextpatch"
 	"ningharness/workspace"
 )
 
@@ -36,5 +37,5 @@ func formatWriteOK(rel, content, writeID string) string {
 	if wid := strings.TrimSpace(writeID); wid != "" {
 		msg += " writeId=" + wid
 	}
-	return msg
+	return contextpatch.Append(msg, contextpatch.FileWrote(rel, n, writeID))
 }

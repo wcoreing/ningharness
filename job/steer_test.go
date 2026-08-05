@@ -16,7 +16,7 @@ func TestSteerTakeAndFormat(t *testing.T) {
 		return "run-1", nil
 	}, nil)
 	m.Bind(root)
-	job, err := m.EnqueueGoal("do thing", "", "g", QueueSessionKey("x"), "", "", 3)
+	job, err := m.EnqueueGoal(GoalEnqueue{Objective: "do thing", Title: "g", SessionKey: QueueSessionKey("x"), MaxRounds: 3})
 	if err != nil {
 		t.Fatal(err)
 	}

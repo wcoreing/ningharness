@@ -55,6 +55,8 @@ type Gateway struct {
 	OnPathsMoved    func(movedTo map[string]string)
 	OnWriteWorktree func(relPath, content, writeID string) error
 	OnWriteBytes    func(relPath string, data []byte, writeID string) error
+	// OnContextPatch 台面 ContextPatch（pin/写盘等）；供 UI 订阅，不改写本轮开场前馈。
+	OnContextPatch func(patch any)
 }
 
 func New(ws *workspace.Service, sess *session.Store) *Gateway {

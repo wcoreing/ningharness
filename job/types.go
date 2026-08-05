@@ -33,6 +33,18 @@ const JobTypeGoal = "goal"
 // DefaultGoalMaxRounds Goal 外环默认硬上限。
 const DefaultGoalMaxRounds = 100
 
+// GoalEnqueue EnqueueGoal 入参（避免一长串位置参数）。
+type GoalEnqueue struct {
+	Objective  string
+	Driver     string
+	Title      string
+	SessionKey string // 空则 once:queue:{id}
+	Purpose    string
+	Model      string
+	MaxRounds  int // <1 → DefaultGoalMaxRounds
+	FeedExtra  string
+}
+
 // DefaultPathPrompt MCP/空模板时的兜底。
 const DefaultPathPrompt = `请按任务说明处理本节。完成后聊天只回路径与短确认，不要贴全文。`
 
@@ -83,6 +95,8 @@ type Job struct {
 
 	GoalMaxRounds int `json:"goalMaxRounds,omitempty"`
 	GoalRound     int `json:"goalRound,omitempty"`
+	// GoalNext 遗留列（旧队列库可能仍有）；不再写入或消费。
+	GoalNext string `json:"goalNext,omitempty"`
 	// SteerPending 运行中插话（人引导）；下一工具结果或下一 Goal 轮注入后清空。
 	SteerPending string `json:"steerPending,omitempty"`
 }
