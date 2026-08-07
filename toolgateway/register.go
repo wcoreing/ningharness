@@ -156,7 +156,7 @@ func RegisterCoreTools(s *server.MCPServer, h *Gateway) {
 	), h.toolListLessons)
 
 	s.AddTool(mcp.NewTool("ack_lesson",
-		mcp.WithDescription("人认账一条 lesson（acked_at）。"),
+		mcp.WithDescription("认账一条 lesson（acked_at）。新写入默认已可用；用于历史未认账条或再次确认。"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("lesson id")),
 	), h.toolAckLesson)
 

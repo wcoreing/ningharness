@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 )
@@ -52,10 +53,12 @@ type ResumeState struct {
 }
 
 // Writer 单 Task 的 JSONL 追加写入。
+// Eino 会并行调工具，Append 必须串行，否则丢行（曾漏 list_pins/pin_path）。
 type Writer struct {
 	root   string
 	taskID string
 	path   string
+	mu     sync.Mutex
 }
 
 func Dir(root string) string {
@@ -123,6 +126,8 @@ func (w *Writer) Append(ev Event) error {
 	if w == nil || w.path == "" {
 		return fmt.Errorf("trace: nil writer")
 	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
 	if ev.TS <= 0 {
 		ev.TS = time.Now().UnixMilli()
 	}

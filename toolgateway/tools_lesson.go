@@ -63,7 +63,7 @@ func (h *Gateway) toolAppendSkillNote(_ context.Context, req mcp.CallToolRequest
 	if e.SourceTaskID != "" {
 		msg += " source_task=" + e.SourceTaskID
 	}
-	msg += "（未认账）"
+	msg += "（已可用）"
 	if e.ParentTaskID != "" {
 		msg += " parent_task=" + e.ParentTaskID
 	}

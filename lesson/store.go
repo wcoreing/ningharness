@@ -122,6 +122,7 @@ func Append(in AppendInput) (Entry, error) {
 		ParentTaskID:     strings.TrimSpace(in.ParentTaskID),
 		SourceSessionKey: strings.TrimSpace(in.SourceSessionKey),
 		SupersedesID:     strings.TrimSpace(in.SupersedesID),
+		AckedAtMs:        now, // 写入即默认可用（进前馈）；ack_lesson 仍可用于历史未认账条
 		CreatedAtMs:      now,
 		UpdatedAtMs:      now,
 	}
@@ -136,7 +137,7 @@ func Append(in AppendInput) (Entry, error) {
 	) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 		e.ID, e.ProjectID, e.Scope, string(aj), e.Body, e.Status,
 		e.SourceTaskID, e.ParentTaskID, e.SourceSessionKey, e.SupersedesID,
-		0, e.CreatedAtMs, e.UpdatedAtMs)
+		e.AckedAtMs, e.CreatedAtMs, e.UpdatedAtMs)
 	if err != nil {
 		return Entry{}, err
 	}
@@ -294,7 +295,7 @@ func ListActivePersonal(limit int) ([]Entry, error) {
 	rows, err := db.Query(`SELECT id, project_id, scope, anchors, body, status,
 		source_task_id, parent_task_id, source_session_key, supersedes_id,
 		acked_at_ms, created_at_ms, updated_at_ms
-		FROM lesson_entry WHERE project_id=? AND scope=? AND status=? AND acked_at_ms>0
+		FROM lesson_entry WHERE project_id=? AND scope=? AND status=?
 		ORDER BY created_at_ms DESC LIMIT ?`,
 		PersonalProjectID, ScopePersonal, StatusActive, limit)
 	if err != nil {
@@ -384,7 +385,7 @@ func InjectBrief(root string, skillIDs []string, maxRunes int) string {
 	}
 
 	personal, _ := ListActivePersonal(8)
-	writeSection("## 个人经验（lesson_entry · personal · 已认账）", personal)
+	writeSection("## 个人经验（lesson_entry · personal · active）", personal)
 
 	proj, _ := ListActiveProject(root, 8)
 	writeSection("## 项目经验（lesson_entry · project · active）", proj)

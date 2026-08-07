@@ -104,11 +104,11 @@ type einoGuest struct {
 	modelLabel  string
 }
 
-func (g *einoGuest) Chat(ctx context.Context, message string) (string, error) {
+func (g *einoGuest) Run(ctx context.Context, in guest.Input) (string, error) {
 	if g == nil {
 		return "", fmt.Errorf("eino guest: nil")
 	}
-	message = strings.TrimSpace(message)
+	message := guest.Wire(in)
 	if message == "" {
 		return "", fmt.Errorf("eino guest: empty message")
 	}

@@ -35,8 +35,11 @@ func TestAppendListInjectImport(t *testing.T) {
 		t.Fatalf("list=%v err=%v", list, err)
 	}
 	brief := InjectBrief(root, []string{"demo"}, 900)
-	if !strings.Contains(brief, "prefer short") || !strings.Contains(brief, "未认账") {
+	if !strings.Contains(brief, "prefer short") {
 		t.Fatalf("brief=%s", brief)
+	}
+	if e.AckedAtMs == 0 {
+		t.Fatal("Append should default-ack")
 	}
 	noMatch := InjectBrief(root, nil, 900)
 	if strings.Contains(noMatch, "prefer short") {

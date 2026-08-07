@@ -9,7 +9,7 @@ var NoSilentInjectIDs = map[string]bool{
 	"extract":     true,
 }
 
-// FilterLessonInjectIDs 从路径匹配结果中去掉编排类，供 Turn 前馈 InjectBrief 使用。
+// FilterLessonInjectIDs 从路径匹配结果中去掉编排类，供 Turn 前馈 Memory.Assemble 使用。
 func FilterLessonInjectIDs(ids []string) []string {
 	if len(ids) == 0 {
 		return nil

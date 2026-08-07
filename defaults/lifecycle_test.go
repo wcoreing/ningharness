@@ -5,21 +5,26 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"ningharness"
+	"ningharness/guest"
 	"ningharness/lifecycle"
+	"ningharness/memory"
 )
+
+func (g *stubGuest) Run(ctx context.Context, in guest.Input) (string, error) {
+	g.calls++
+	g.last = in
+	return g.reply, g.err
+}
 
 type stubGuest struct {
 	reply string
 	err   error
 	calls int
-}
-
-func (g *stubGuest) Chat(ctx context.Context, message string) (string, error) {
-	g.calls++
-	return g.reply, g.err
+	last  guest.Input
 }
 
 func TestChatRunsDefaultLifecycle(t *testing.T) {
@@ -137,6 +142,84 @@ func TestAssembleContextWritesFeedforward(t *testing.T) {
 	if !found {
 		t.Fatalf("expected user with feedforward, sessions=%+v", f.Sessions)
 	}
+}
+
+func TestAssembleContextMergesMemoryPatch(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HOME", dir)
+	root := filepath.Join(dir, "proj")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	rt, err := Open(Opts{
+		Opts: ningharness.Opts{
+			DataDir: filepath.Join(dir, "data"),
+			Root:    root,
+		},
+		MCPAddr:     "off",
+		WithoutEino: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rt.Close()
+	rt.SetMemory(stubMemory{patch: "## mem\n- x"})
+	st := &lifecycle.RunState{
+		Root:        root,
+		SessionKey:  "main",
+		TaskID:      "t-mem",
+		Prompt:      "hi",
+		Feedforward: "## client\n- y",
+	}
+	if err := rt.AssembleContext(t.Context(), st); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(st.Feedforward, "## client") || !strings.Contains(st.Feedforward, "## mem") {
+		t.Fatalf("Feedforward=%q", st.Feedforward)
+	}
+}
+
+func TestRunGuestPassesFeedforward(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HOME", dir)
+	root := filepath.Join(dir, "proj")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	rt, err := Open(Opts{
+		Opts: ningharness.Opts{
+			DataDir: filepath.Join(dir, "data"),
+			Root:    root,
+		},
+		MCPAddr:         "off",
+		WithoutEino:     true,
+		WithoutMemory:   true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rt.Close()
+	g := &stubGuest{reply: "pong"}
+	rt.SetGuest(g)
+	st := &lifecycle.RunState{
+		Root:        root,
+		SessionKey:  "main",
+		TaskID:      "t-ff-run",
+		Prompt:      "hi",
+		Feedforward: "## ff",
+	}
+	if err := rt.RunGuest(t.Context(), st); err != nil {
+		t.Fatal(err)
+	}
+	if g.last.Message != "hi" || g.last.Feedforward != "## ff" {
+		t.Fatalf("last=%+v", g.last)
+	}
+}
+
+type stubMemory struct{ patch string }
+
+func (s stubMemory) Assemble(ctx context.Context, in memory.AssembleInput) (string, error) {
+	return s.patch, nil
 }
 
 func TestLifecycleWatchAfterGuest(t *testing.T) {

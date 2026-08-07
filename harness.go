@@ -1,11 +1,12 @@
-// Package ningharness 是 Agent 宿主门面：Open / UseProject / Close（DB + Session + Job）。
+// Package ningharness 是 Agent 宿主门面：Open / UseProject / Close（Store + Session + Job）。
 //
 // 层划分（扁平包，靠依赖方向表达架构）：
-//   - lifecycle：一轮怎么跑（步骤 + Bus + RunState）
-//   - toolgateway / workspace：工具网关与文件世界（turn* 为 RunState 投影）
-//   - store / session / history / resource / task / job / goal / trace / skill / lesson：台账与记忆
-//   - guest：模型怎么想
-//   - defaults：可选装配（Lifecycle Host + MCP + Eino）
+//   - lifecycle：一轮怎么跑（步骤 + Bus + RunState）；前馈见 RunState.Feedforward
+//   - toolgateway / workspace：Gateway 与文件世界（turn* 为 RunState 投影）
+//   - store / session / history / resource / task / job / goal / trace：Store
+//   - skill / lesson / memory：Skill Slot + Memory 插槽（默认 Disk / Lesson）
+//   - guest：Guest 插槽（Run；前馈经 guest.Wire）
+//   - defaults：可选装配（Lifecycle Host + MCP + Eino + Memory + Skill）；examples 为示例客户端
 package ningharness
 
 import (

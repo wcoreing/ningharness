@@ -1,5 +1,5 @@
-// Package skill 项目级 Skill 磁盘契约：system/skills/<id>/SKILL.md + scripts/、references/、assets/。
-// 经验 SSOT 在 desk.db lesson_entry（库导出载体仍可写 LESSONS.md）。不含内置 packs 正文。
+// Package skill 项目级 Skill 磁盘契约与 Slot 插槽：system/skills/<id>/SKILL.md。
+// 经验 SSOT 在 Store lesson_entry（库导出载体仍可写 LESSONS.md）。不含内置 packs 正文。
 package skill
 
 import (

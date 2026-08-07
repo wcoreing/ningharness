@@ -49,6 +49,27 @@ type HTTPConfig struct {
 	Instructions string
 	HealthName   string
 	ExtraRoutes  func(mux *http.ServeMux, h *Gateway)
+	// ExtraTools 在 RegisterCoreTools 之后调用，供产品 AddTool。
+	ExtraTools func(s *server.MCPServer, h *Gateway)
+}
+
+// NewMCPHTTPHandler 构建 Streamable MCP HTTP handler（带 CORS），不 Listen。
+// 可挂到产品自有 mux（如 Local API 同端口 /mcp）。
+func NewMCPHTTPHandler(h *Gateway, cfg HTTPConfig) http.Handler {
+	name := strings.TrimSpace(cfg.ServerName)
+	if name == "" {
+		name = "ningharness"
+	}
+	version := strings.TrimSpace(cfg.Version)
+	if version == "" {
+		version = ServerVersion
+	}
+	mcpSrv := NewMCPServer(h, name, version, cfg.Instructions)
+	if cfg.ExtraTools != nil {
+		cfg.ExtraTools(mcpSrv, h)
+	}
+	mcpHTTP := server.NewStreamableHTTPServer(mcpSrv, server.WithEndpointPath("/mcp"))
+	return withCORS(mcpHTTP)
 }
 
 func StartHTTP(cfg HTTPConfig, h *Gateway) (*HTTPService, error) {
@@ -66,21 +87,15 @@ func StartHTTP(cfg HTTPConfig, h *Gateway) (*HTTPService, error) {
 	if name == "" {
 		name = "ningharness"
 	}
-	version := strings.TrimSpace(cfg.Version)
-	if version == "" {
-		version = ServerVersion
-	}
 	healthName := strings.TrimSpace(cfg.HealthName)
 	if healthName == "" {
 		healthName = name
 	}
 
-	mcpHTTP := server.NewStreamableHTTPServer(NewMCPServer(h, name, version, cfg.Instructions),
-		server.WithEndpointPath("/mcp"),
-	)
+	mcpHTTP := NewMCPHTTPHandler(h, cfg)
 
 	mux := http.NewServeMux()
-	mux.Handle("/mcp", withCORS(mcpHTTP))
+	mux.Handle("/mcp", mcpHTTP)
 	if cfg.ExtraRoutes != nil {
 		cfg.ExtraRoutes(mux, h)
 	}

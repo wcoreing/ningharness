@@ -77,23 +77,35 @@ func (s *Service) ListTree() (TreeListing, error) {
 	return ListTreeAt(p.Root)
 }
 
+const (
+	maxTreeDepth = 8
+	maxTreeNodes = 2000
+)
+
 // ListTreeAt 列出任意绝对目录下的文件树。
 func ListTreeAt(absRoot string) (TreeListing, error) {
 	root := filepath.Clean(strings.TrimSpace(absRoot))
 	if root == "" {
 		return TreeListing{}, fmt.Errorf("empty root")
 	}
+	if root == string(filepath.Separator) {
+		return TreeListing{}, fmt.Errorf("refusing to list filesystem root")
+	}
 	entries, err := os.ReadDir(root)
 	if err != nil {
 		return TreeListing{}, err
 	}
+	budget := &treeBudget{maxNodes: maxTreeNodes, maxDepth: maxTreeDepth}
 	out := make([]protocol.TreeNode, 0, len(entries))
 	for _, e := range entries {
+		if budget.full() {
+			break
+		}
 		name := e.Name()
 		if shouldSkip(name) {
 			continue
 		}
-		node, err := buildNode(root, name, e.IsDir())
+		node, err := buildNode(root, name, e.IsDir(), 1, budget)
 		if err != nil {
 			continue
 		}
@@ -103,16 +115,43 @@ func ListTreeAt(absRoot string) (TreeListing, error) {
 	return TreeListing{Nodes: out}, nil
 }
 
-func buildNode(root, rel string, isDir bool) (protocol.TreeNode, error) {
+type treeBudget struct {
+	nodes    int
+	maxNodes int
+	maxDepth int
+}
+
+func (b *treeBudget) full() bool {
+	return b != nil && b.nodes >= b.maxNodes
+}
+
+func (b *treeBudget) take() bool {
+	if b == nil {
+		return true
+	}
+	if b.nodes >= b.maxNodes {
+		return false
+	}
+	b.nodes++
+	return true
+}
+
+func buildNode(root, rel string, isDir bool, depth int, budget *treeBudget) (protocol.TreeNode, error) {
 	name := filepath.Base(rel)
 	n := protocol.TreeNode{
 		RelPath: filepath.ToSlash(rel),
 		Name:    name,
 		IsDir:   isDir,
 	}
+	if !budget.take() {
+		return n, fmt.Errorf("tree budget exhausted")
+	}
 	abs := filepath.Join(root, filepath.FromSlash(rel))
 	if !isDir {
 		n.WordCount = fileWordCount(abs, rel)
+		return n, nil
+	}
+	if depth >= budget.maxDepth {
 		return n, nil
 	}
 	entries, err := os.ReadDir(abs)
@@ -121,12 +160,15 @@ func buildNode(root, rel string, isDir bool) (protocol.TreeNode, error) {
 	}
 	sum := 0
 	for _, e := range entries {
+		if budget.full() {
+			break
+		}
 		childName := e.Name()
 		if shouldSkip(childName) {
 			continue
 		}
 		childRel := filepath.ToSlash(filepath.Join(rel, childName))
-		child, err := buildNode(root, childRel, e.IsDir())
+		child, err := buildNode(root, childRel, e.IsDir(), depth+1, budget)
 		if err != nil {
 			continue
 		}
@@ -167,7 +209,9 @@ func fileWordCount(abs, rel string) int {
 
 func shouldSkip(name string) bool {
 	switch name {
-	case ".git", "node_modules", "dist", ".DS_Store", "frontend/dist":
+	case ".git", "node_modules", "dist", ".DS_Store", "frontend/dist",
+		"vendor", "build", "chrome-profile", "chromium-profile",
+		".ningharness-data", ".ningharness":
 		return true
 	}
 	return strings.HasPrefix(name, ".")

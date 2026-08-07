@@ -33,7 +33,10 @@ func (h *Gateway) CallNamedTool(ctx context.Context, name string, args map[strin
 	tr := h.TaskTrace()
 	callID := ""
 	if tr != nil {
-		callID = newTraceCallID()
+		callID = traceCallIDFrom(ctx)
+		if callID == "" {
+			callID = newTraceCallID()
+		}
 		brief, _ := json.Marshal(argsBriefForTrace(name, args))
 		_ = tr.ToolCall(callID, name, string(brief))
 	}

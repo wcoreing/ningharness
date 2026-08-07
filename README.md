@@ -11,55 +11,78 @@ Owns world truth and the tool gateway—not how the model thinks.
 
 | In scope | Out of scope |
 |----------|--------------|
-| Durable state in `store` (`desk.db`) | Desktop / UI shells |
-| Workspace I/O + **Gateway** MCP core tools | Product-specific extensions (VCS UI, pins, …) |
-| Skill contract + Lesson memory | Product Skill pack catalogs |
-| Job / Task ledgers | — |
+| **Store** durable state (`desk.db`, …) | **Client** UI / product shells |
+| Workspace I/O + **Gateway** MCP core tools | Client-specific tools and UX |
+| Skill contract + Lesson / Memory | Client Skill catalogs and policies |
+| Job / Task (part of Store) | — |
 | **Lifecycle** (default steps + event bus) | — |
 | **Optional defaults**: MCP server + Eino Guest | You may replace or disable them |
 
-Tool truth lives in the host: Guests change the world only through Gateway—no bypass disk writes. Lessons need human ack.  
-Each Chat / Job run follows package **`lifecycle`**. Phase boundaries emit on an **event bus** (`On` gate / `Watch` observe) with turn context `RunState`. MCP tools are not lifecycle steps—they run inside `run_guest` via Gateway.
+Tool truth lives in the host: Guests change the world only through Gateway—no bypass disk writes.  
+Each Chat / Job run follows **`lifecycle`**. Phase boundaries use the **Bus** (`On` / `Watch`) with `RunState`. MCP tools run only inside `run_guest` via Gateway.
+
+## Standard shape
+
+```text
+[Client] caller (app / MCP host / examples embedding this library)
+        │  Open · UseProject · RunTurn/Chat · register tools · Bus
+        ▼
+[ningharness core]
+   Workspace · Store · Gateway · Lifecycle · RunState
+   swappable slots: Guest · Memory · Skill
+```
+
+- **Client**: the caller; UI is not implemented in this library.  
+- **Store**: in-framework durable state (session / history / task / job / resource / lesson, …).  
+- **Feedforward**: a `RunState` field written at `assemble` and sent into the model—not the whole `RunState`.
 
 ## Glossary
 
 | Term | Meaning |
 |------|---------|
-| **Harness** | Facade: DB + Session + Job |
-| **Lifecycle** | Fixed-phase pipeline for one Task / Chat turn (ordered steps + Bus) |
+| **Client** | Caller that embeds or invokes this library |
+| **Harness** | Facade: Store + Session + Job |
+| **Store** | In-framework durable state (session / history / task / job / resource / lesson, …) |
+| **Workspace** | Project file world (paths relative to root) |
+| **Lifecycle** | Fixed-phase pipeline for one Task / Chat turn (steps + Bus) |
 | **Bus / Event** | Lifecycle events: `Phase × before\|after`; `On` may Block, `Watch` observes only |
-| **RunState** | Per-turn pipeline context shared by steps and handlers |
+| **RunState** | Per-turn pipeline context; shared by steps and Bus; **Guest does not read it directly** |
+| **Feedforward** | Extra model context on `RunState`; attached when `assemble` persists the user row |
 | **Step** | Domain atom (e.g. `begin_task`, `run_guest`); **not** a tool name |
-| **Gateway** | Tool gateway + MCP core (register / authorize / invoke) |
-| **Guest** | Model loop (default: Eino; swappable) |
-| **Task** | One execution ledger |
-| **Job** | Queue unit (schedules when to run a lifecycle; may span multiple tasks) |
-| **Goal** | Outer-loop Job: re-trigger the lifecycle until `GOAL.yaml` status is terminal |
+| **Gateway** | Tool gateway + MCP core (register / authorize / invoke); sole side-effect entry |
+| **Guest** | Model-loop slot: `Run(Input{Message,Feedforward})`; default Eino; `guest.Chat` sugar without feedforward |
+| **Memory** | Memory slot: feedforward at `assemble`; optional `Ingester` (`FileIngest` JSONL); default `memory.Lesson`; `NewLessonWithFileIngest` bundles both |
+| **Skill** | Method-pack slot: `List` / `Match` / `Load`; default `skill.Disk`; `SetSkill` / `WithoutSkill` |
+| **Lesson** | Experience row in Store; usable in feedforward on write; `ack_lesson` for legacy unacked / re-confirm |
+| **Task** | One execution record (Store) |
+| **Job** | Queue unit (schedules when to run a Lifecycle; may span tasks) |
+| **Goal** | Outer-loop Job: re-trigger Lifecycle until `GOAL.yaml` status is terminal |
 | **Trace** | Append-only JSONL under `.ningharness/traces/` per Task; resume = paired tool_call/tool_result + task_end |
-| **Skill** | On-disk method pack contract |
-| **Lesson** | Experience entry (ack to own) |
 
 ## Packages (by layer)
 
 ```text
 ningharness/           facade Open/Close/UseProject
-  lifecycle/           one turn: steps + Bus + RunState (state.go) + Runner
-  toolgateway/         Gateway + MCP + tool Registry; turn* = projection of RunState
+  lifecycle/           one turn: steps + Bus + RunState + Runner
+  toolgateway/         Gateway + MCP + tool Registry; turn* = RunState projection
   workspace/ protocol/ files / shared DTOs
-  store/ session/ history/ resource/
+  store/ session/ history/ resource/   Store
   task/ job/ goal/ trace/
-  skill/ lesson/       ledgers & memory
-  guest/ (+ eino/)     how the model thinks
-  defaults/            wiring (Host projects RunState → ToolGateway + MCP + Eino)
-  examples/
+  skill/ lesson/       Skill Slot + Lesson (Store)
+  memory/              Memory slot (Assemble + optional Ingest)
+  guest/ (+ eino/)     Guest slot (Run)
+  defaults/            wiring (Lifecycle Host + Gateway projection + MCP + Eino + Memory + Skill)
+  examples/            sample Client
 ```
 
-Dependency rule: `defaults` → lifecycle / toolgateway / guest; `lifecycle` does not import `toolgateway` (Host injected).
+Dependency rule: `defaults` → lifecycle / toolgateway / guest / memory / skill; `lifecycle` does not import `toolgateway` (Host injected).
 
 Turn projection: `begin_task` → `Gateway.ProjectTurn`; teardown only via `OnExit` → `FinishTurn` (`end_task` is a Bus hook).  
-`runLifecycle` may wrap ctx with `WithRunState` for Host steps; **Guest stays free of RunState** — tool turn identity is the Gateway projection, not ctx through the model stack.  
-`assemble_context` persists the user row and honors `RunState.Feedforward` (Job `FeedExtra` is mapped in).  
-Tool dispatch: `RegisterHandler` + core `ensureCoreHandlers`; product tools need not edit `CallNamedTool`.
+`runLifecycle` may wrap ctx with `WithRunState` for Host steps; **Guest stays free of RunState** — tool turn identity is the Gateway projection.  
+`assemble_context`: match `skill.paths` → merge caller feedforward + **Memory.Assemble** → `RunState.Feedforward` → persist user.  
+`run_guest`: `Guest.Run` (`guest.Wire` merges feedforward into the model turn).  
+`persist_turn`: persist assistant; if Memory implements **Ingester**, call `Ingest`.  
+Tool dispatch: `RegisterHandler` + core `ensureCoreHandlers`; Client extensions need not edit `CallNamedTool`.
 
 ## Quick start
 
@@ -160,4 +183,4 @@ Requires Go 1.25+ only.
 
 **GitHub About**
 
-> Pure Go agent host: desk.db, Gateway/MCP core tools, skill/lesson; optional Eino Guest. No UI.
+> Pure Go agent host: Store, Gateway/MCP core tools, Skill/Memory; optional Eino Guest. Client owns UI.
