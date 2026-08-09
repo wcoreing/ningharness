@@ -31,7 +31,25 @@ func sqliteDSN(path string) string {
 var (
 	mu    sync.Mutex
 	cache = map[string]*sql.DB{}
+
+	embedMu      sync.Mutex
+	embedDataDir string
 )
+
+// SetEmbedDataDir 嵌入方指定 desk.db 目录；空则清除。
+// OpenProject / history / session 将与此目录对齐，避免误写 ~/.agentdesk。
+func SetEmbedDataDir(dir string) {
+	embedMu.Lock()
+	defer embedMu.Unlock()
+	embedDataDir = strings.TrimSpace(dir)
+}
+
+// EmbedDataDir 当前嵌入库目录（只读）。
+func EmbedDataDir() string {
+	embedMu.Lock()
+	defer embedMu.Unlock()
+	return embedDataDir
+}
 
 // ProjectPath 旧项目库路径（仅迁移用）。
 func ProjectPath(root string) string {
@@ -140,6 +158,7 @@ func CloseAll() {
 		_ = db.Close()
 		delete(cache, k)
 	}
+	SetEmbedDataDir("")
 }
 func ResetCacheForTest() { CloseAll() }
 

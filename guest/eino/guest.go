@@ -6,60 +6,52 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 
 	"ningharness/guest"
+	guestmodel "ningharness/guest/model"
 	"ningharness/toolgateway"
 
 	"github.com/cloudwego/eino/adk"
+	"github.com/cloudwego/eino/components/model"
 	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/compose"
 	"github.com/cloudwego/eino/schema"
-	"github.com/cloudwego/eino-ext/components/model/openai"
 	toolutils "github.com/cloudwego/eino/components/tool/utils"
 )
 
 const defaultInstruction = `You are a helpful project agent. Use tools to inspect and edit files under the project root.
 Prefer read_file / list_tree / grep before write_file. Keep replies short; after writes report paths only.`
 
-// Opts Eino Guest 配置；空字段从环境变量回落。
+// Opts Eino Guest 配置；空字段从环境变量回落（经 guest/model 工厂）。
 type Opts struct {
-	APIKey      string // NINGHARNESS_API_KEY 或 OPENAI_API_KEY
-	BaseURL     string // NINGHARNESS_BASE_URL 或 OPENAI_BASE_URL
-	Model       string // NINGHARNESS_MODEL，默认 gpt-4o-mini
+	Provider    string // qwen|deepseek|minimax|ollama|ark|tokenhub|openai；空=openai
+	APIKey      string
+	BaseURL     string
+	Model       string
+	Thinking    bool
 	Instruction string
 	MaxIters    int // 默认 24
 }
 
-// New 构造默认 Eino Guest；gw 不可空。
+// New 构造默认 Eino Guest；gw 不可空；模型经 guest/model.NewChatModel。
 func New(gw *toolgateway.Gateway, opts Opts) (guest.Guest, error) {
 	if gw == nil {
 		return nil, fmt.Errorf("eino guest: nil Gateway")
 	}
-	apiKey := strings.TrimSpace(opts.APIKey)
-	if apiKey == "" {
-		apiKey = strings.TrimSpace(os.Getenv("NINGHARNESS_API_KEY"))
+	prov := guestmodel.ParseProvider(opts.Provider)
+	if strings.TrimSpace(opts.Provider) == "" {
+		prov = guestmodel.ProviderOpenAI
 	}
-	if apiKey == "" {
-		apiKey = strings.TrimSpace(os.Getenv("OPENAI_API_KEY"))
-	}
-	if apiKey == "" {
-		return nil, fmt.Errorf("eino guest: set NINGHARNESS_API_KEY or OPENAI_API_KEY")
-	}
-	baseURL := strings.TrimSpace(opts.BaseURL)
-	if baseURL == "" {
-		baseURL = strings.TrimSpace(os.Getenv("NINGHARNESS_BASE_URL"))
-	}
-	if baseURL == "" {
-		baseURL = strings.TrimSpace(os.Getenv("OPENAI_BASE_URL"))
-	}
-	modelName := strings.TrimSpace(opts.Model)
-	if modelName == "" {
-		modelName = strings.TrimSpace(os.Getenv("NINGHARNESS_MODEL"))
-	}
-	if modelName == "" {
-		modelName = "gpt-4o-mini"
+	cm, modelName, err := guestmodel.NewChatModel(context.Background(), guestmodel.Config{
+		Provider: prov,
+		APIKey:   opts.APIKey,
+		BaseURL:  opts.BaseURL,
+		Model:    opts.Model,
+		Thinking: opts.Thinking,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("eino guest model: %w", err)
 	}
 	instruction := strings.TrimSpace(opts.Instruction)
 	if instruction == "" {
@@ -68,18 +60,6 @@ func New(gw *toolgateway.Gateway, opts Opts) (guest.Guest, error) {
 	maxIt := opts.MaxIters
 	if maxIt <= 0 {
 		maxIt = 24
-	}
-
-	cfg := &openai.ChatModelConfig{
-		APIKey: apiKey,
-		Model:  modelName,
-	}
-	if baseURL != "" {
-		cfg.BaseURL = baseURL
-	}
-	cm, err := openai.NewChatModel(context.Background(), cfg)
-	if err != nil {
-		return nil, fmt.Errorf("eino guest model: %w", err)
 	}
 	tools, err := buildTools(gw)
 	if err != nil {
@@ -97,7 +77,7 @@ func New(gw *toolgateway.Gateway, opts Opts) (guest.Guest, error) {
 
 type einoGuest struct {
 	gw          *toolgateway.Gateway
-	cm          *openai.ChatModel
+	cm          model.ToolCallingChatModel
 	tools       []tool.BaseTool
 	instruction string
 	maxIters    int

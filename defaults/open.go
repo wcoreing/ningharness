@@ -160,6 +160,9 @@ func (rt *Runtime) bindJobExecutor() {
 			Feedforward:    strings.TrimSpace(j.FeedExtra),
 			SkipUserAppend: true, // 无 FeedExtra 时不落 user；有则 assemble 仍落（带前馈）
 		}
+		if p := strings.TrimSpace(j.Purpose); p != "" {
+			st.Set("purpose", p)
+		}
 		if err := rt.runLifecycle(ctx, st); err != nil {
 			return "", err
 		}

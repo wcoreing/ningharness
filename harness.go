@@ -44,11 +44,14 @@ func Open(opts Opts) (*Harness, error) {
 	)
 	dir := strings.TrimSpace(opts.DataDir)
 	if dir == "" {
+		store.SetEmbedDataDir("")
 		db, err = store.Open()
 	} else {
+		store.SetEmbedDataDir(dir)
 		db, err = store.OpenAt(dir)
 	}
 	if err != nil {
+		store.SetEmbedDataDir("")
 		return nil, err
 	}
 	h := &Harness{
@@ -88,6 +91,7 @@ func (h *Harness) Root() string {
 }
 
 // UseProject 登记项目、打开项目迁移，并绑定 Job 到该根。
+// 若 Open 时带了 DataDir，则库落在该目录（OpenProjectAt），避免嵌入方误写入 ~/.agentdesk。
 func (h *Harness) UseProject(root string) error {
 	if h == nil {
 		return fmt.Errorf("ningharness: nil")
@@ -96,7 +100,15 @@ func (h *Harness) UseProject(root string) error {
 	if root == "" {
 		return fmt.Errorf("ningharness: empty root")
 	}
-	db, err := store.OpenProject(root)
+	var (
+		db  *sql.DB
+		err error
+	)
+	if dir := strings.TrimSpace(h.dataDir); dir != "" {
+		db, err = store.OpenProjectAt(dir, root)
+	} else {
+		db, err = store.OpenProject(root)
+	}
 	if err != nil {
 		return err
 	}

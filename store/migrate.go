@@ -40,7 +40,12 @@ func isEphemeralRoot(root string) bool {
 }
 
 // OpenProject 唯一库（生产 ~/.agentdesk/desk.db；测试 TempDir 内 desk.db）。
+// 若 SetEmbedDataDir 已设（嵌入方 Open 带了 DataDir），则始终用该目录，
+// 保证 session/history 与 Harness.DB 同一文件。
 func openProjectDB(root string) (*sql.DB, error) {
+	if dir := EmbedDataDir(); dir != "" {
+		return OpenAt(dir)
+	}
 	if isEphemeralRoot(root) {
 		// 测试：库落在项目 .agentdesk/desk.db（隔离且被 gitignore）
 		return OpenAt(filepath.Join(root, ".agentdesk"))

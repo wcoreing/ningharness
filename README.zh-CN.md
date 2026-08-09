@@ -17,6 +17,7 @@
 | Job / Task（属 Store） | — |
 | **Lifecycle**（默认步骤 + 事件打孔） | — |
 | **可选默认**：MCP 服务 + Eino Guest | 可关闭或自行替换 |
+| **guest/model**：多后端 ChatModel 工厂 | 产品 UI / 密钥保管 |
 
 工具真相在宿主：Guest 只能经 Gateway 改世界，禁止绕过写盘。  
 一轮 Chat / Job 由 **`lifecycle`** 定义；阶段边界经 **Bus** 打孔（`On` / `Watch`），载荷为 `RunState`。MCP 工具只发生在 `run_guest` 内（经 Gateway）。
