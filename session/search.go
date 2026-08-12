@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"ningharness/history"
-	"ningharness/store"
+	"github.com/wcoreing/ningharness/history"
+	"github.com/wcoreing/ningharness/store"
 )
 
 const (

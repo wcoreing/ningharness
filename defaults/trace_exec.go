@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"ningharness/job"
+	"github.com/wcoreing/ningharness/job"
 )
 
 func taskIDForJob(j job.Job) string {

@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"ningharness/task"
+	"github.com/wcoreing/ningharness/task"
 )
 
 // restoreJobsFromTasks 从 tasks 台账重建已结束 Job（无队列行时兜底）。

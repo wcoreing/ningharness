@@ -10,15 +10,15 @@ import (
 	"strings"
 	"time"
 
-	"ningharness"
-	"ningharness/guest"
-	"ningharness/guest/eino"
-	"ningharness/job"
-	"ningharness/lifecycle"
-	"ningharness/memory"
-	"ningharness/skill"
-	"ningharness/toolgateway"
-	"ningharness/workspace"
+	"github.com/wcoreing/ningharness"
+	"github.com/wcoreing/ningharness/guest"
+	"github.com/wcoreing/ningharness/guest/eino"
+	"github.com/wcoreing/ningharness/job"
+	"github.com/wcoreing/ningharness/lifecycle"
+	"github.com/wcoreing/ningharness/memory"
+	"github.com/wcoreing/ningharness/skill"
+	"github.com/wcoreing/ningharness/toolgateway"
+	"github.com/wcoreing/ningharness/workspace"
 
 	"github.com/mark3labs/mcp-go/server"
 )
@@ -106,7 +106,7 @@ func Open(opts Opts) (*Runtime, error) {
 		}
 		serverName := strings.TrimSpace(opts.MCPServerName)
 		if serverName == "" {
-			serverName = "ningharness"
+			serverName = "github.com/wcoreing/ningharness"
 		}
 		instructions := strings.TrimSpace(opts.MCPInstructions)
 		if instructions == "" {

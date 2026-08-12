@@ -3,7 +3,7 @@ package workspace
 import (
 	"sort"
 
-	"ningharness/protocol"
+	"github.com/wcoreing/ningharness/protocol"
 	
 )
 

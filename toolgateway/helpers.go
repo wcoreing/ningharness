@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"ningharness/workspace"
+	"github.com/wcoreing/ningharness/workspace"
 
 	"github.com/mark3labs/mcp-go/mcp"
 )

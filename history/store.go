@@ -9,7 +9,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"ningharness/store"
+	"github.com/wcoreing/ningharness/store"
 )
 
 const (

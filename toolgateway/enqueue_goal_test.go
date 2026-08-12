@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	deskqueue "ningharness/job"
-	"ningharness/session"
-	"ningharness/workspace"
+	deskqueue "github.com/wcoreing/ningharness/job"
+	"github.com/wcoreing/ningharness/session"
+	"github.com/wcoreing/ningharness/workspace"
 )
 
 func TestInvokeEnqueueGoal(t *testing.T) {

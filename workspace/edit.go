@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"ningharness/contextpatch"
+	"github.com/wcoreing/ningharness/contextpatch"
 )
 
 // ApplyEdit 在正文中替换 old→new。replaceAll=false 时 old 必须恰好出现一次。

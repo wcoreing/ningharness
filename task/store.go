@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"ningharness/store"
-	"ningharness/history"
+	"github.com/wcoreing/ningharness/store"
+	"github.com/wcoreing/ningharness/history"
 )
 
 const MaxKeep = 50

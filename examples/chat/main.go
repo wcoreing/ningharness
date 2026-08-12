@@ -13,9 +13,9 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"ningharness"
-	"ningharness/defaults"
-	"ningharness/guest/eino"
+	"github.com/wcoreing/ningharness"
+	"github.com/wcoreing/ningharness/defaults"
+	"github.com/wcoreing/ningharness/guest/eino"
 )
 
 var einoCfg = eino.Opts{
@@ -59,7 +59,7 @@ func main() {
 Cursor (~/.cursor/mcp.json):
 {
   "mcpServers": {
-    "ningharness": {
+    "github.com/wcoreing/ningharness": {
       "url": %q
     }
   }

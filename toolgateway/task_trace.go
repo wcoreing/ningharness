@@ -3,7 +3,7 @@ package toolgateway
 import (
 	"strings"
 
-	"ningharness/trace"
+	"github.com/wcoreing/ningharness/trace"
 )
 
 func (h *Gateway) WithTaskTrace(root, taskID, sessionKey, jobID string, fn func() error) (err error) {

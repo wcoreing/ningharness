@@ -101,9 +101,9 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"ningharness"
-	"ningharness/defaults"
-	"ningharness/guest/eino"
+	"github.com/wcoreing/ningharness"
+	"github.com/wcoreing/ningharness/defaults"
+	"github.com/wcoreing/ningharness/guest/eino"
 )
 
 var einoCfg = eino.Opts{
@@ -161,8 +161,11 @@ Defaults wire **Gateway** core tools + **MCP HTTP** (`/mcp`) + **Eino Guest** (R
 ## Integrate
 
 ```go
-require ningharness v0.0.0
-replace ningharness => ../ningharness
+require github.com/wcoreing/ningharness v0.0.0
+```
+
+```bash
+go get github.com/wcoreing/ningharness@main
 ```
 
 Embed `toolgateway.Gateway` for product tools, or `defaults.Open` + `SetGuest`.

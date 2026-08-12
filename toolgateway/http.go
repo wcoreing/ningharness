@@ -58,7 +58,7 @@ type HTTPConfig struct {
 func NewMCPHTTPHandler(h *Gateway, cfg HTTPConfig) http.Handler {
 	name := strings.TrimSpace(cfg.ServerName)
 	if name == "" {
-		name = "ningharness"
+		name = "github.com/wcoreing/ningharness"
 	}
 	version := strings.TrimSpace(cfg.Version)
 	if version == "" {
@@ -85,7 +85,7 @@ func StartHTTP(cfg HTTPConfig, h *Gateway) (*HTTPService, error) {
 	}
 	name := strings.TrimSpace(cfg.ServerName)
 	if name == "" {
-		name = "ningharness"
+		name = "github.com/wcoreing/ningharness"
 	}
 	healthName := strings.TrimSpace(cfg.HealthName)
 	if healthName == "" {

@@ -3,7 +3,7 @@ package task
 import (
 	"testing"
 
-	"ningharness/history"
+	"github.com/wcoreing/ningharness/history"
 )
 
 func TestStepsFromHistoryCallResult(t *testing.T) {

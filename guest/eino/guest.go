@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"strings"
 
-	"ningharness/guest"
-	guestmodel "ningharness/guest/model"
-	"ningharness/toolgateway"
+	"github.com/wcoreing/ningharness/guest"
+	guestmodel "github.com/wcoreing/ningharness/guest/model"
+	"github.com/wcoreing/ningharness/toolgateway"
 
 	"github.com/cloudwego/eino/adk"
 	"github.com/cloudwego/eino/components/model"
@@ -93,7 +93,7 @@ func (g *einoGuest) Run(ctx context.Context, in guest.Input) (string, error) {
 		return "", fmt.Errorf("eino guest: empty message")
 	}
 	agentInst, err := adk.NewChatModelAgent(ctx, &adk.ChatModelAgentConfig{
-		Name:          "ningharness",
+		Name:          "github.com/wcoreing/ningharness",
 		Description:   "ningharness default Eino guest",
 		Instruction:   g.instruction,
 		Model:         g.cm,

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"ningharness/history"
+	"github.com/wcoreing/ningharness/history"
 )
 
 // StepDiffLine 写盘对照行（DTO；正文在 resource kind=diff）。

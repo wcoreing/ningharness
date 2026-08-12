@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	deskqueue "ningharness/job"
+	deskqueue "github.com/wcoreing/ningharness/job"
 
 	"github.com/mark3labs/mcp-go/mcp"
 )

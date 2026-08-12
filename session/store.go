@@ -8,8 +8,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"ningharness/store"
-	"ningharness/history"
+	"github.com/wcoreing/ningharness/store"
+	"github.com/wcoreing/ningharness/history"
 )
 
 // Message 会话消息（工作记忆壳；正文进 ContextMessages；工具经 TaskID → tasks，禁止塞进 Content）。

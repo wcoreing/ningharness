@@ -3,7 +3,7 @@ package memory
 import (
 	"context"
 
-	"ningharness/lesson"
+	"github.com/wcoreing/ningharness/lesson"
 )
 
 // Lesson 默认 Memory：用 lesson.InjectBrief 贡献前馈。

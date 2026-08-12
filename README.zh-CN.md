@@ -102,9 +102,9 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"ningharness"
-	"ningharness/defaults"
-	"ningharness/guest/eino"
+	"github.com/wcoreing/ningharness"
+	"github.com/wcoreing/ningharness/defaults"
+	"github.com/wcoreing/ningharness/guest/eino"
 )
 
 var einoCfg = eino.Opts{
@@ -162,8 +162,11 @@ go run ./examples/chat /path/to/project "List files briefly."
 ## 接入
 
 ```go
-require ningharness v0.0.0
-replace ningharness => ../ningharness
+require github.com/wcoreing/ningharness v0.0.0
+```
+
+```bash
+go get github.com/wcoreing/ningharness@main
 ```
 
 嵌入 `toolgateway.Gateway` 挂产品工具，或 `defaults.Open` + `SetGuest`。

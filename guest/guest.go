@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"ningharness/history"
+	"github.com/wcoreing/ningharness/history"
 )
 
 // Input 一轮交给 Guest 的进模输入（不含 RunState）。

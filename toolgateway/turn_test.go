@@ -3,7 +3,7 @@ package toolgateway
 import (
 	"testing"
 
-	"ningharness/workspace"
+	"github.com/wcoreing/ningharness/workspace"
 )
 
 func TestProjectTurnAndFinishTurn(t *testing.T) {

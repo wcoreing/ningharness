@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"ningharness"
-	"ningharness/store"
-	"ningharness/job"
-	"ningharness/lesson"
-	"ningharness/task"
+	"github.com/wcoreing/ningharness"
+	"github.com/wcoreing/ningharness/store"
+	"github.com/wcoreing/ningharness/job"
+	"github.com/wcoreing/ningharness/lesson"
+	"github.com/wcoreing/ningharness/task"
 )
 
 func TestHarnessSmoke(t *testing.T) {

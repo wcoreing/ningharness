@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"ningharness/workspace"
+	"github.com/wcoreing/ningharness/workspace"
 
 	"github.com/mark3labs/mcp-go/mcp"
 )

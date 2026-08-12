@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"ningharness/lesson"
-	"ningharness/store"
+	"github.com/wcoreing/ningharness/lesson"
+	"github.com/wcoreing/ningharness/store"
 )
 
 func TestMergeFeedforward(t *testing.T) {

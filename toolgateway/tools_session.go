@@ -3,8 +3,8 @@ package toolgateway
 import (
 	"context"
 
-	resource "ningharness/resource"
-	session "ningharness/session"
+	resource "github.com/wcoreing/ningharness/resource"
+	session "github.com/wcoreing/ningharness/session"
 
 	"github.com/mark3labs/mcp-go/mcp"
 )

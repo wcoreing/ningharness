@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"ningharness/guest"
-	"ningharness/lifecycle"
-	"ningharness/memory"
-	"ningharness/skill"
+	"github.com/wcoreing/ningharness/guest"
+	"github.com/wcoreing/ningharness/lifecycle"
+	"github.com/wcoreing/ningharness/memory"
+	"github.com/wcoreing/ningharness/skill"
 )
 
 // BeginTask 开 Trace，ProjectTurn 投影；OnExit→FinishTurn 为唯一收尾路径。

@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"ningharness"
+	"github.com/wcoreing/ningharness"
 )
 
 func TestOpenWithoutEinoAndMCP(t *testing.T) {

@@ -3,7 +3,7 @@ package workspace
 import (
 	"testing"
 
-	"ningharness/protocol"
+	"github.com/wcoreing/ningharness/protocol"
 )
 
 func TestSortTreeChildrenDirsFirst(t *testing.T) {

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	agenttask "ningharness/task"
-	"ningharness/trace"
+	agenttask "github.com/wcoreing/ningharness/task"
+	"github.com/wcoreing/ningharness/trace"
 
 	"github.com/mark3labs/mcp-go/mcp"
 )

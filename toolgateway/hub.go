@@ -9,10 +9,10 @@ import (
 	"strings"
 	"sync"
 
-	deskqueue "ningharness/job"
-	session "ningharness/session"
-	"ningharness/trace"
-	"ningharness/workspace"
+	deskqueue "github.com/wcoreing/ningharness/job"
+	session "github.com/wcoreing/ningharness/session"
+	"github.com/wcoreing/ningharness/trace"
+	"github.com/wcoreing/ningharness/workspace"
 )
 
 const ServerVersion = "0.1.3"

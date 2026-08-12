@@ -8,10 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	"ningharness"
-	"ningharness/guest"
-	"ningharness/lifecycle"
-	"ningharness/memory"
+	"github.com/wcoreing/ningharness"
+	"github.com/wcoreing/ningharness/guest"
+	"github.com/wcoreing/ningharness/lifecycle"
+	"github.com/wcoreing/ningharness/memory"
 )
 
 func (g *stubGuest) Run(ctx context.Context, in guest.Input) (string, error) {

@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"ningharness/store"
+	"github.com/wcoreing/ningharness/store"
 )
 
 func openDB(root string) (*sql.DB, string, error) {

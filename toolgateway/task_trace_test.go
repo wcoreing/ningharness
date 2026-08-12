@@ -4,8 +4,8 @@ import (
 	"os"
 	"testing"
 
-	"ningharness/trace"
-	"ningharness/workspace"
+	"github.com/wcoreing/ningharness/trace"
+	"github.com/wcoreing/ningharness/workspace"
 )
 
 func TestWithTaskTraceWritesJSONL(t *testing.T) {

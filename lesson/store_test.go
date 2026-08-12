@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"ningharness/store"
+	"github.com/wcoreing/ningharness/store"
 )
 
 func TestAppendListInjectImport(t *testing.T) {

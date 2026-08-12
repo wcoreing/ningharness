@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"ningharness/contextpatch"
-	"ningharness/workspace"
+	"github.com/wcoreing/ningharness/contextpatch"
+	"github.com/wcoreing/ningharness/workspace"
 )
 
 const WriteFileToolDesc = "整文件写入项目相对路径。" +

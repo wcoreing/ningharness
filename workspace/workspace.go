@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	"ningharness/protocol"
+	"github.com/wcoreing/ningharness/protocol"
 	
 	
 )

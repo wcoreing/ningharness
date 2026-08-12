@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	lesson "ningharness/lesson"
-	nhskill "ningharness/skill"
+	lesson "github.com/wcoreing/ningharness/lesson"
+	nhskill "github.com/wcoreing/ningharness/skill"
 
 	"github.com/mark3labs/mcp-go/mcp"
 )

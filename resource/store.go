@@ -8,8 +8,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"ningharness/task"
-	"ningharness/store"
+	"github.com/wcoreing/ningharness/task"
+	"github.com/wcoreing/ningharness/store"
 )
 
 const (

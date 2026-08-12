@@ -1,4 +1,4 @@
-module ningharness
+module github.com/wcoreing/ningharness
 
 go 1.25.5
 

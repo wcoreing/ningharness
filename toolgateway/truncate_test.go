@@ -8,8 +8,8 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"ningharness/session"
-	"ningharness/workspace"
+	"github.com/wcoreing/ningharness/session"
+	"github.com/wcoreing/ningharness/workspace"
 
 	"github.com/mark3labs/mcp-go/mcp"
 )

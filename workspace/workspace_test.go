@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	"ningharness/protocol"
+	"github.com/wcoreing/ningharness/protocol"
 )
 
 func TestOpenListReadWrite(t *testing.T) {

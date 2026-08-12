@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"ningharness/store"
+	"github.com/wcoreing/ningharness/store"
 )
 
 func TestAppendLoadByTaskAndStripSnapshot(t *testing.T) {

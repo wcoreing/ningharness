@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"ningharness/store"
-	"ningharness/history"
+	"github.com/wcoreing/ningharness/store"
+	"github.com/wcoreing/ningharness/history"
 )
 
 func TestSaveGetList(t *testing.T) {

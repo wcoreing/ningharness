@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"ningharness/store"
-	agenttask "ningharness/task"
+	"github.com/wcoreing/ningharness/store"
+	agenttask "github.com/wcoreing/ningharness/task"
 )
 
 func TestEnqueueIsolatedSessionKey(t *testing.T) {

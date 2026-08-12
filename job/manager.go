@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"ningharness/goal"
+	"github.com/wcoreing/ningharness/goal"
 )
 
 // Executor 执行单条 agent-turn（同步；取消靠 ctx）。

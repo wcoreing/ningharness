@@ -14,9 +14,9 @@ import (
 	"fmt"
 	"strings"
 
-	"ningharness/store"
-	"ningharness/job"
-	"ningharness/session"
+	"github.com/wcoreing/ningharness/store"
+	"github.com/wcoreing/ningharness/job"
+	"github.com/wcoreing/ningharness/session"
 )
 
 // Opts Open 参数（通用宿主配置；不含业务域名）。
