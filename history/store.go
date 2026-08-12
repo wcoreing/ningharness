@@ -80,7 +80,7 @@ func EnsureSystem(root, sessionKey, systemText string) error {
 		return err
 	}
 	var id int64
-	err = db.QueryRow(`SELECT id FROM history_message WHERE project_id=? AND session_key=? AND role='system' ORDER BY seq ASC LIMIT 1`,
+	err = db.QueryRow(store.R(`SELECT id FROM history_message WHERE project_id=? AND session_key=? AND role='system' ORDER BY seq ASC LIMIT 1`),
 		pid, sessionKey).Scan(&id)
 	now := time.Now().UnixMilli()
 	if err == sql.ErrNoRows {
@@ -91,7 +91,7 @@ func EnsureSystem(root, sessionKey, systemText string) error {
 	if err != nil {
 		return err
 	}
-	_, err = db.Exec(`UPDATE history_message SET content=?, created_at_ms=? WHERE id=?`, systemText, now, id)
+	_, err = db.Exec(store.R(`UPDATE history_message SET content=?, created_at_ms=? WHERE id=?`), systemText, now, id)
 	return err
 }
 
@@ -134,10 +134,10 @@ func AppendThinking(root, sessionKey, taskID, text string) error {
 	}
 	var id int64
 	var role, existingTask string
-	err = db.QueryRow(`SELECT id, role, task_id FROM history_message WHERE project_id=? AND session_key=? ORDER BY seq DESC, id DESC LIMIT 1`,
+	err = db.QueryRow(store.R(`SELECT id, role, task_id FROM history_message WHERE project_id=? AND session_key=? ORDER BY seq DESC, id DESC LIMIT 1`),
 		pid, sessionKey).Scan(&id, &role, &existingTask)
 	if err == nil && role == "thinking" && strings.TrimSpace(existingTask) == taskID {
-		_, err = db.Exec(`UPDATE history_message SET content=content||?, created_at_ms=? WHERE id=?`,
+		_, err = db.Exec(store.R(`UPDATE history_message SET content=content||?, created_at_ms=? WHERE id=?`),
 			text, time.Now().UnixMilli(), id)
 		return err
 	}
@@ -157,7 +157,7 @@ func insertMsg(db *sql.DB, pid, sessionKey string, m Msg) error {
 	defer func() { _ = tx.Rollback() }()
 
 	var maxSeq sql.NullInt64
-	if err := tx.QueryRow(`SELECT MAX(seq) FROM history_message WHERE project_id=? AND session_key=?`, pid, sessionKey).Scan(&maxSeq); err != nil {
+	if err := tx.QueryRow(store.R(`SELECT MAX(seq) FROM history_message WHERE project_id=? AND session_key=?`), pid, sessionKey).Scan(&maxSeq); err != nil {
 		return err
 	}
 	seq := 1
@@ -168,8 +168,8 @@ func insertMsg(db *sql.DB, pid, sessionKey string, m Msg) error {
 	if strings.TrimSpace(m.Role) == "user" {
 		ff = strings.TrimSpace(m.Feedforward)
 	}
-	_, err = tx.Exec(`INSERT INTO history_message(project_id, session_key, seq, role, content, feedforward, tool_call_id, tool_calls_json, resource_ids_json, task_id, created_at_ms)
-		VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
+	_, err = tx.Exec(store.R(`INSERT INTO history_message(project_id, session_key, seq, role, content, feedforward, tool_call_id, tool_calls_json, resource_ids_json, task_id, created_at_ms)
+		VALUES(?,?,?,?,?,?,?,?,?,?,?)`),
 		pid, sessionKey, seq, m.Role, m.Content, ff, strings.TrimSpace(m.ToolCallID), strings.TrimSpace(m.ToolCallsJSON),
 		strings.TrimSpace(m.ResourceIDsJSON), strings.TrimSpace(m.TaskID), m.CreatedAtMs)
 	if err != nil {
@@ -189,8 +189,8 @@ func Load(root, sessionKey string) ([]Msg, error) {
 	if err != nil {
 		return nil, err
 	}
-	rows, err := db.Query(`SELECT seq, role, content, feedforward, tool_call_id, tool_calls_json, resource_ids_json, task_id, created_at_ms
-		FROM history_message WHERE project_id=? AND session_key=? ORDER BY seq ASC, id ASC`, pid, sessionKey)
+	rows, err := db.Query(store.R(`SELECT seq, role, content, feedforward, tool_call_id, tool_calls_json, resource_ids_json, task_id, created_at_ms
+		FROM history_message WHERE project_id=? AND session_key=? ORDER BY seq ASC, id ASC`), pid, sessionKey)
 	if err != nil {
 		return nil, err
 	}
@@ -209,8 +209,8 @@ func LoadByTask(root, taskID string) ([]Msg, error) {
 	if err != nil {
 		return nil, err
 	}
-	rows, err := db.Query(`SELECT seq, role, content, feedforward, tool_call_id, tool_calls_json, resource_ids_json, task_id, created_at_ms
-		FROM history_message WHERE project_id=? AND task_id=? ORDER BY seq ASC, id ASC`, pid, taskID)
+	rows, err := db.Query(store.R(`SELECT seq, role, content, feedforward, tool_call_id, tool_calls_json, resource_ids_json, task_id, created_at_ms
+		FROM history_message WHERE project_id=? AND task_id=? ORDER BY seq ASC, id ASC`), pid, taskID)
 	if err != nil {
 		return nil, err
 	}
@@ -264,7 +264,7 @@ func ClearSession(root, sessionKey string) error {
 	if err != nil {
 		return err
 	}
-	_, err = db.Exec(`DELETE FROM history_message WHERE project_id=? AND session_key=?`, pid, sessionKey)
+	_, err = db.Exec(store.R(`DELETE FROM history_message WHERE project_id=? AND session_key=?`), pid, sessionKey)
 	return err
 }
 
@@ -306,7 +306,7 @@ func TruncateAfterUIKeep(root, sessionKey string, keep int) error {
 	if err != nil {
 		return err
 	}
-	_, err = db.Exec(`DELETE FROM history_message WHERE project_id=? AND session_key=? AND seq>?`, pid, sessionKey, cutoff)
+	_, err = db.Exec(store.R(`DELETE FROM history_message WHERE project_id=? AND session_key=? AND seq>?`), pid, sessionKey, cutoff)
 	return err
 }
 

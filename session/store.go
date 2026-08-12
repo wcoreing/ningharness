@@ -55,7 +55,7 @@ func (s *Store) load(projectRoot, projectID string) (File, error) {
 	if err != nil {
 		return File{}, err
 	}
-	rows, err := db.Query(`SELECT id, title, orch_key, updated_at_ms FROM sessions WHERE project_id=? ORDER BY updated_at_ms ASC`, pid)
+	rows, err := db.Query(store.R(`SELECT id, title, orch_key, updated_at_ms FROM sessions WHERE project_id=? ORDER BY updated_at_ms ASC`), pid)
 	if err != nil {
 		return File{}, err
 	}
@@ -95,7 +95,7 @@ func (s *Store) load(projectRoot, projectID string) (File, error) {
 	if len(sessions) == 0 {
 		now := time.Now().UnixMilli()
 		sid := MainSessionID
-		if _, err := db.Exec(`INSERT INTO sessions(project_id, id, title, orch_key, updated_at_ms) VALUES(?,?,?,?,?)`,
+		if _, err := db.Exec(store.R(`INSERT INTO sessions(project_id, id, title, orch_key, updated_at_ms) VALUES(?,?,?,?,?)`),
 			pid, sid, "main", OrchKey(projectID, sid), now); err != nil {
 			return File{}, err
 		}
@@ -142,8 +142,8 @@ func (s *Store) saveActive(db *sql.DB, projectKey, activeID string) error {
 }
 
 func upsertSession(tx *sql.Tx, projectKey string, sess Session) error {
-	_, err := tx.Exec(`INSERT INTO sessions(project_id, id, title, orch_key, updated_at_ms) VALUES(?,?,?,?,?)
-		ON CONFLICT(project_id, id) DO UPDATE SET title=excluded.title, orch_key=excluded.orch_key, updated_at_ms=excluded.updated_at_ms`,
+	_, err := tx.Exec(store.R(`INSERT INTO sessions(project_id, id, title, orch_key, updated_at_ms) VALUES(?,?,?,?,?)
+		ON CONFLICT(project_id, id) DO UPDATE SET title=excluded.title, orch_key=excluded.orch_key, updated_at_ms=excluded.updated_at_ms`),
 		projectKey, sess.ID, sess.Title, sess.OrchKey, sess.UpdatedAt)
 	return err
 }
@@ -161,7 +161,7 @@ func (s *Store) persistSessionsMeta(projectRoot, projectID string, f File) error
 	defer func() { _ = tx.Rollback() }()
 
 	existing := map[string]struct{}{}
-	rows, err := tx.Query(`SELECT id FROM sessions WHERE project_id=?`, pid)
+	rows, err := tx.Query(store.R(`SELECT id FROM sessions WHERE project_id=?`), pid)
 	if err != nil {
 		return err
 	}
@@ -186,16 +186,16 @@ func (s *Store) persistSessionsMeta(projectRoot, projectID string, f File) error
 	}
 	for id := range existing {
 		if _, ok := keep[id]; !ok {
-			if _, err := tx.Exec(`DELETE FROM history_message WHERE project_id=? AND session_key=?`, pid, id); err != nil {
+			if _, err := tx.Exec(store.R(`DELETE FROM history_message WHERE project_id=? AND session_key=?`), pid, id); err != nil {
 				return err
 			}
-			if _, err := tx.Exec(`DELETE FROM sessions WHERE project_id=? AND id=?`, pid, id); err != nil {
+			if _, err := tx.Exec(store.R(`DELETE FROM sessions WHERE project_id=? AND id=?`), pid, id); err != nil {
 				return err
 			}
 		}
 	}
-	if _, err := tx.Exec(`INSERT INTO meta(project_id, key, value) VALUES(?,?,?)
-		ON CONFLICT(project_id, key) DO UPDATE SET value=excluded.value`, pid, "active_session", NormalizeSessionID(f.ActiveID)); err != nil {
+	if _, err := tx.Exec(store.R(`INSERT INTO meta(project_id, key, value) VALUES(?,?,?)
+		ON CONFLICT(project_id, key) DO UPDATE SET value=excluded.value`), pid, "active_session", NormalizeSessionID(f.ActiveID)); err != nil {
 		return err
 	}
 	return tx.Commit()
@@ -411,7 +411,7 @@ func (s *Store) Ensure(projectRoot, projectID, sessionID, title string) error {
 	if err != nil {
 		return err
 	}
-	_, err = db.Exec(`INSERT INTO sessions(project_id, id, title, orch_key, updated_at_ms) VALUES(?,?,?,?,?)`,
+	_, err = db.Exec(store.R(`INSERT INTO sessions(project_id, id, title, orch_key, updated_at_ms) VALUES(?,?,?,?,?)`),
 		pid, sid, t, OrchKey(projectID, sid), now)
 	return err
 }

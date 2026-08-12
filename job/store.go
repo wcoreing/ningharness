@@ -39,9 +39,9 @@ func loadFile(root string) (File, error) {
 		}
 	}
 
-	rows, err := db.Query(`SELECT id, type, title, prompt, driver, model, target_rel, status, task_id, error, last_error,
+	rows, err := db.Query(store.R(`SELECT id, type, title, prompt, driver, model, target_rel, status, task_id, error, last_error,
 		retry_count, batch_id, created_at, started_at, finished_at, session_key, purpose, feed_extra,
-		step_done, step_total, progress_hint, goal_max_rounds, goal_round, goal_next, steer_pending, sort_ord FROM jobs WHERE project_id=? ORDER BY sort_ord ASC, created_at ASC`, pid)
+		step_done, step_total, progress_hint, goal_max_rounds, goal_round, goal_next, steer_pending, sort_ord FROM jobs WHERE project_id=? ORDER BY sort_ord ASC, created_at ASC`), pid)
 	if err != nil {
 		return File{}, err
 	}
@@ -91,7 +91,7 @@ func loadFile(root string) (File, error) {
 }
 
 func loadSteps(db *sql.DB, pid, jobID string) ([]Step, error) {
-	rows, err := db.Query(`SELECT rel, title, prompt, status, task_id, error FROM job_steps WHERE project_id=? AND job_id=? ORDER BY idx ASC`, pid, jobID)
+	rows, err := db.Query(store.R(`SELECT rel, title, prompt, status, task_id, error FROM job_steps WHERE project_id=? AND job_id=? ORDER BY idx ASC`), pid, jobID)
 	if err != nil {
 		return nil, err
 	}
@@ -134,30 +134,30 @@ func saveFile(root string, f File) error {
 		"queue_max_parallel":   strconv.Itoa(f.MaxParallel),
 	}
 	for k, v := range metas {
-		if _, err := tx.Exec(`INSERT INTO meta(project_id, key, value) VALUES(?, ?, ?)
-			ON CONFLICT(project_id, key) DO UPDATE SET value=excluded.value`, pid, k, v); err != nil {
+		if _, err := tx.Exec(store.R(`INSERT INTO meta(project_id, key, value) VALUES(?, ?, ?)
+			ON CONFLICT(project_id, key) DO UPDATE SET value=excluded.value`), pid, k, v); err != nil {
 			return err
 		}
 	}
-	if _, err := tx.Exec(`DELETE FROM job_steps WHERE project_id=?`, pid); err != nil {
+	if _, err := tx.Exec(store.R(`DELETE FROM job_steps WHERE project_id=?`), pid); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(`DELETE FROM jobs WHERE project_id=?`, pid); err != nil {
+	if _, err := tx.Exec(store.R(`DELETE FROM jobs WHERE project_id=?`), pid); err != nil {
 		return err
 	}
 	for i, job := range f.Jobs {
-		if _, err := tx.Exec(`INSERT INTO jobs(
+		if _, err := tx.Exec(store.R(`INSERT INTO jobs(
 			project_id, id, type, title, prompt, driver, model, target_rel, status, task_id, error, last_error,
 			retry_count, batch_id, created_at, started_at, finished_at, session_key, purpose, feed_extra,
 			step_done, step_total, progress_hint, goal_max_rounds, goal_round, goal_next, steer_pending, sort_ord)
-			VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+			VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`),
 			pid, job.ID, job.Type, job.Title, job.Prompt, job.Driver, job.Model, job.TargetRel, string(job.Status), job.TaskID, job.Error, job.LastError,
 			job.RetryCount, job.BatchID, job.CreatedAt, job.StartedAt, job.FinishedAt, job.SessionKey, job.Purpose, job.FeedExtra,
 			job.StepDone, job.StepTotal, job.ProgressHint, job.GoalMaxRounds, job.GoalRound, job.GoalNext, job.SteerPending, i); err != nil {
 			return err
 		}
 		for j, s := range job.Steps {
-			if _, err := tx.Exec(`INSERT INTO job_steps(project_id, job_id, idx, rel, title, prompt, status, task_id, error) VALUES(?,?,?,?,?,?,?,?,?)`,
+			if _, err := tx.Exec(store.R(`INSERT INTO job_steps(project_id, job_id, idx, rel, title, prompt, status, task_id, error) VALUES(?,?,?,?,?,?,?,?,?)`),
 				pid, job.ID, j, s.Rel, s.Title, s.Prompt, string(s.Status), s.TaskID, s.Error); err != nil {
 				return err
 			}

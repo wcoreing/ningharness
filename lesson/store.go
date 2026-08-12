@@ -130,11 +130,11 @@ func Append(in AppendInput) (Entry, error) {
 	if err != nil {
 		return Entry{}, err
 	}
-	_, err = db.Exec(`INSERT INTO lesson_entry(
+	_, err = db.Exec(store.R(`INSERT INTO lesson_entry(
 		id, project_id, scope, anchors, body, status,
 		source_task_id, parent_task_id, source_session_key, supersedes_id,
 		acked_at_ms, created_at_ms, updated_at_ms
-	) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+	) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`),
 		e.ID, e.ProjectID, e.Scope, string(aj), e.Body, e.Status,
 		e.SourceTaskID, e.ParentTaskID, e.SourceSessionKey, e.SupersedesID,
 		e.AckedAtMs, e.CreatedAtMs, e.UpdatedAtMs)
@@ -153,8 +153,8 @@ func SetStatus(root, id, status string) error {
 		return fmt.Errorf("lesson: bad status")
 	}
 	return mutateByID(root, id, func(db *sql.DB, pid string) error {
-		res, err := db.Exec(`UPDATE lesson_entry SET status=?, updated_at_ms=?
-			WHERE id=? AND (project_id=? OR project_id=?)`,
+		res, err := db.Exec(store.R(`UPDATE lesson_entry SET status=?, updated_at_ms=?
+			WHERE id=? AND (project_id=? OR project_id=?)`),
 			status, time.Now().UnixMilli(), strings.TrimSpace(id), pid, PersonalProjectID)
 		if err != nil {
 			return err
@@ -170,8 +170,8 @@ func SetStatus(root, id, status string) error {
 func Ack(root, id string) error {
 	return mutateByID(root, id, func(db *sql.DB, pid string) error {
 		now := time.Now().UnixMilli()
-		res, err := db.Exec(`UPDATE lesson_entry SET acked_at_ms=?, updated_at_ms=?
-			WHERE id=? AND (project_id=? OR project_id=?)`,
+		res, err := db.Exec(store.R(`UPDATE lesson_entry SET acked_at_ms=?, updated_at_ms=?
+			WHERE id=? AND (project_id=? OR project_id=?)`),
 			now, now, strings.TrimSpace(id), pid, PersonalProjectID)
 		if err != nil {
 			return err
@@ -199,10 +199,10 @@ func ListActive(root string, skillIDs []string, limit int) ([]Entry, error) {
 			want[id] = struct{}{}
 		}
 	}
-	rows, err := db.Query(`SELECT id, project_id, scope, anchors, body, status,
+	rows, err := db.Query(store.R(`SELECT id, project_id, scope, anchors, body, status,
 		source_task_id, parent_task_id, source_session_key, supersedes_id,
 		acked_at_ms, created_at_ms, updated_at_ms
-		FROM lesson_entry WHERE project_id=? AND status=? AND scope=? ORDER BY created_at_ms DESC`,
+		FROM lesson_entry WHERE project_id=? AND status=? AND scope=? ORDER BY created_at_ms DESC`),
 		pid, StatusActive, ScopeSkill)
 	if err != nil {
 		return nil, err
@@ -236,11 +236,11 @@ func ListBySkill(root, skillID string) ([]Entry, error) {
 	if err != nil {
 		return nil, err
 	}
-	rows, err := db.Query(`SELECT id, project_id, scope, anchors, body, status,
+	rows, err := db.Query(store.R(`SELECT id, project_id, scope, anchors, body, status,
 		source_task_id, parent_task_id, source_session_key, supersedes_id,
 		acked_at_ms, created_at_ms, updated_at_ms
 		FROM lesson_entry WHERE project_id=? AND scope=? AND json_extract(anchors,'$.skillId')=?
-		ORDER BY created_at_ms ASC`,
+		ORDER BY created_at_ms ASC`),
 		pid, ScopeSkill, skillID)
 	if err != nil {
 		return nil, err
@@ -272,10 +272,10 @@ func ListByScope(root, scope string, limit int) ([]Entry, error) {
 			return nil, err
 		}
 	}
-	rows, err := db.Query(`SELECT id, project_id, scope, anchors, body, status,
+	rows, err := db.Query(store.R(`SELECT id, project_id, scope, anchors, body, status,
 		source_task_id, parent_task_id, source_session_key, supersedes_id,
 		acked_at_ms, created_at_ms, updated_at_ms
-		FROM lesson_entry WHERE project_id=? AND scope=? ORDER BY created_at_ms DESC LIMIT ?`,
+		FROM lesson_entry WHERE project_id=? AND scope=? ORDER BY created_at_ms DESC LIMIT ?`),
 		pid, scope, limit)
 	if err != nil {
 		return nil, err
@@ -292,11 +292,11 @@ func ListActivePersonal(limit int) ([]Entry, error) {
 	if err != nil {
 		return nil, err
 	}
-	rows, err := db.Query(`SELECT id, project_id, scope, anchors, body, status,
+	rows, err := db.Query(store.R(`SELECT id, project_id, scope, anchors, body, status,
 		source_task_id, parent_task_id, source_session_key, supersedes_id,
 		acked_at_ms, created_at_ms, updated_at_ms
 		FROM lesson_entry WHERE project_id=? AND scope=? AND status=?
-		ORDER BY created_at_ms DESC LIMIT ?`,
+		ORDER BY created_at_ms DESC LIMIT ?`),
 		PersonalProjectID, ScopePersonal, StatusActive, limit)
 	if err != nil {
 		return nil, err
@@ -313,11 +313,11 @@ func ListActiveProject(root string, limit int) ([]Entry, error) {
 	if err != nil {
 		return nil, err
 	}
-	rows, err := db.Query(`SELECT id, project_id, scope, anchors, body, status,
+	rows, err := db.Query(store.R(`SELECT id, project_id, scope, anchors, body, status,
 		source_task_id, parent_task_id, source_session_key, supersedes_id,
 		acked_at_ms, created_at_ms, updated_at_ms
 		FROM lesson_entry WHERE project_id=? AND scope=? AND status=?
-		ORDER BY created_at_ms DESC LIMIT ?`,
+		ORDER BY created_at_ms DESC LIMIT ?`),
 		pid, ScopeProject, StatusActive, limit)
 	if err != nil {
 		return nil, err
@@ -337,7 +337,7 @@ func CountProject(root string) int {
 		return 0
 	}
 	var n int
-	_ = db.QueryRow(`SELECT COUNT(*) FROM lesson_entry WHERE project_id=?`, pid).Scan(&n)
+	_ = db.QueryRow(store.R(`SELECT COUNT(*) FROM lesson_entry WHERE project_id=?`), pid).Scan(&n)
 	return n
 }
 
@@ -495,11 +495,11 @@ func ImportFromLessonsFile(root, skillID, md string) (int, error) {
 		if id == "" {
 			id = newID()
 		}
-		res, err := db.Exec(`INSERT OR IGNORE INTO lesson_entry(
+		res, err := db.Exec(store.R(`INSERT OR IGNORE INTO lesson_entry(
 			id, project_id, scope, anchors, body, status,
 			source_task_id, parent_task_id, source_session_key, supersedes_id,
 			acked_at_ms, created_at_ms, updated_at_ms
-		) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+		) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`),
 			id, pid, ScopeSkill, string(aj), e.Body, e.Status,
 			e.SourceTaskID, e.ParentTaskID, "", e.SupersedesID,
 			0, now, now)

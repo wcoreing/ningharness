@@ -19,12 +19,22 @@ import (
 	"ningharness/session"
 )
 
-// Opts Open 参数。
+// Opts Open 参数（通用宿主配置；不含业务域名）。
 type Opts struct {
-	// DataDir 全局 desk.db 所在目录；空则默认数据目录。
+	// DataDir sqlite 下 desk.db 目录；也可作嵌入方工作区根。mysql 忽略库路径。
 	DataDir string
 	// Root 当前项目根；可空，之后 UseProject。
 	Root string
+	// Driver sqlite（默认）| mysql。
+	Driver string
+	// DSN mysql 连接串；与 DB 二选一。
+	DSN string
+	// DB 宿主注入的连接池（如与产品同实例）；不由此 Close。
+	DB *sql.DB
+	// TablePrefix 表前缀；mysql 默认 nh_，与业务表隔离。
+	TablePrefix string
+	// ProjectKey 逻辑项目键；嵌入同库时建议设稳定键，避免本机路径当 id。
+	ProjectKey string
 }
 
 // Harness 地基句柄。
@@ -38,12 +48,23 @@ type Harness struct {
 
 // Open 打开台面库并装配 Session / Job（Job.Executor 须由调用方 SetExecutor）。
 func Open(opts Opts) (*Harness, error) {
+	store.Configure(store.Config{
+		Driver:      opts.Driver,
+		DSN:         opts.DSN,
+		DB:          opts.DB,
+		TablePrefix: opts.TablePrefix,
+		DataDir:     opts.DataDir,
+		ProjectKey:  opts.ProjectKey,
+	})
 	var (
 		db  *sql.DB
 		err error
 	)
 	dir := strings.TrimSpace(opts.DataDir)
-	if dir == "" {
+	if store.IsMySQL() {
+		store.SetEmbedDataDir(dir) // 工作区仍可对齐 DataDir；库走 mysql
+		db, err = store.Open()
+	} else if dir == "" {
 		store.SetEmbedDataDir("")
 		db, err = store.Open()
 	} else {

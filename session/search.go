@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"ningharness/history"
+	"ningharness/store"
 )
 
 const (
@@ -20,7 +21,7 @@ type SearchOptions struct {
 	SessionID string // 空=全部会话
 }
 
-// Search 按 FTS5 检索 history_message。
+// Search 按 FTS5 检索 history_message；MySQL 无 FTS 时走 LIKE。
 func (s *Store) Search(projectRoot, projectID string, opt SearchOptions) (string, error) {
 	_ = projectID
 	q := strings.TrimSpace(opt.Query)
@@ -38,11 +39,14 @@ func (s *Store) Search(projectRoot, projectID string, opt SearchOptions) (string
 	if err != nil {
 		return "", err
 	}
+	wantSess := NormalizeSessionID(opt.SessionID)
+	if store.IsMySQL() {
+		return s.searchLike(projectRoot, pid, q, wantSess, limit)
+	}
 	ftsQ := buildFTSQuery(q)
 	if ftsQ == "" {
 		return "", fmt.Errorf("query empty after tokenize")
 	}
-	wantSess := NormalizeSessionID(opt.SessionID)
 	sqlQ := `SELECT m.session_key, m.role, m.content, m.task_id, bm25(history_message_fts) AS score
 		FROM history_message_fts
 		JOIN history_message m ON m.id = history_message_fts.rowid
@@ -55,7 +59,7 @@ func (s *Store) Search(projectRoot, projectID string, opt SearchOptions) (string
 	sqlQ += ` ORDER BY score LIMIT ?`
 	args = append(args, limit)
 
-	rows, err := db.Query(sqlQ, args...)
+	rows, err := db.Query(store.R(sqlQ), args...)
 	if err != nil {
 		return s.searchLike(projectRoot, pid, q, wantSess, limit)
 	}
@@ -101,7 +105,7 @@ func (s *Store) searchLike(projectRoot, pid, q, wantSess string, limit int) (str
 	}
 	sqlQ += ` ORDER BY id DESC LIMIT ?`
 	args = append(args, limit)
-	rows, err := db.Query(sqlQ, args...)
+	rows, err := db.Query(store.R(sqlQ), args...)
 	if err != nil {
 		return "", err
 	}

@@ -103,12 +103,12 @@ func Save(root string, rec Record) error {
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	if _, err := tx.Exec(`INSERT INTO tasks(project_id, id, started_at_ms, ended_at_ms, driver, session_id, purpose, job_id, status, error, tool_count)
+	if _, err := tx.Exec(store.R(`INSERT INTO tasks(project_id, id, started_at_ms, ended_at_ms, driver, session_id, purpose, job_id, status, error, tool_count)
 		VALUES(?,?,?,?,?,?,?,?,?,?,?)
 		ON CONFLICT(project_id, id) DO UPDATE SET
 			started_at_ms=excluded.started_at_ms, ended_at_ms=excluded.ended_at_ms, driver=excluded.driver,
 			session_id=excluded.session_id, purpose=excluded.purpose, job_id=excluded.job_id,
-			status=excluded.status, error=excluded.error, tool_count=excluded.tool_count`,
+			status=excluded.status, error=excluded.error, tool_count=excluded.tool_count`),
 		pid, rec.ID, rec.StartedAtMs, rec.EndedAtMs, rec.Driver, rec.SessionID, rec.Purpose, rec.JobID,
 		rec.Status, rec.Error, toolCount); err != nil {
 		return err
@@ -120,7 +120,7 @@ func Save(root string, rec Record) error {
 }
 
 func pruneOld(db *sql.DB, pid string) error {
-	rows, err := db.Query(`SELECT id FROM tasks WHERE project_id=? ORDER BY ended_at_ms DESC`, pid)
+	rows, err := db.Query(store.R(`SELECT id FROM tasks WHERE project_id=? ORDER BY ended_at_ms DESC`), pid)
 	if err != nil {
 		return err
 	}
@@ -137,7 +137,7 @@ func pruneOld(db *sql.DB, pid string) error {
 		return nil
 	}
 	for _, id := range ids[MaxKeep:] {
-		if _, err := db.Exec(`DELETE FROM tasks WHERE project_id=? AND id=?`, pid, id); err != nil {
+		if _, err := db.Exec(store.R(`DELETE FROM tasks WHERE project_id=? AND id=?`), pid, id); err != nil {
 			return err
 		}
 	}
@@ -165,7 +165,7 @@ func List(root string, limit int, usersOnly bool) ([]IndexEntry, error) {
 	}
 	q += ` ORDER BY ended_at_ms DESC LIMIT ?`
 	args = append(args, limit)
-	rows, err := db.Query(q, args...)
+	rows, err := db.Query(store.R(q), args...)
 	if err != nil {
 		return nil, err
 	}
@@ -203,8 +203,8 @@ func Get(root, id string) (*Record, error) {
 		return nil, err
 	}
 	var rec Record
-	err = db.QueryRow(`SELECT id, started_at_ms, ended_at_ms, driver, session_id, purpose, job_id, status, error
-		FROM tasks WHERE project_id=? AND id=?`, pid, id).Scan(
+	err = db.QueryRow(store.R(`SELECT id, started_at_ms, ended_at_ms, driver, session_id, purpose, job_id, status, error
+		FROM tasks WHERE project_id=? AND id=?`), pid, id).Scan(
 		&rec.ID, &rec.StartedAtMs, &rec.EndedAtMs, &rec.Driver, &rec.SessionID, &rec.Purpose, &rec.JobID,
 		&rec.Status, &rec.Error)
 	if err != nil {
@@ -281,7 +281,7 @@ func Count(root string) int {
 		return 0
 	}
 	var n int
-	_ = db.QueryRow(`SELECT COUNT(*) FROM tasks WHERE project_id=?`, pid).Scan(&n)
+	_ = db.QueryRow(store.R(`SELECT COUNT(*) FROM tasks WHERE project_id=?`), pid).Scan(&n)
 	return n
 }
 

@@ -124,9 +124,9 @@ func Put(root string, in PutInput) (id int64, summary string, err error) {
 		return 0, summary, err
 	}
 	now := time.Now().UnixMilli()
-	res, err := db.Exec(`INSERT INTO resource(
+	res, err := db.Exec(store.R(`INSERT INTO resource(
 		project_id, session_key, task_id, tool_call_id, tool_name, kind, phase, rel_path, status, summary, body, created_at_ms)
-		VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`,
+		VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`),
 		pid, strings.TrimSpace(in.SessionKey), strings.TrimSpace(in.TaskID), strings.TrimSpace(in.ToolCallID),
 		name, kind, phase, rel, status, summary, body, now)
 	if err != nil {
@@ -137,7 +137,7 @@ func Put(root string, in PutInput) (id int64, summary string, err error) {
 		return 0, summary, err
 	}
 	summary = BuildSummary(id, name, kind, phase, status, rel, body)
-	_, _ = db.Exec(`UPDATE resource SET summary=? WHERE id=? AND project_id=?`, summary, id, pid)
+	_, _ = db.Exec(store.R(`UPDATE resource SET summary=? WHERE id=? AND project_id=?`), summary, id, pid)
 	return id, summary, nil
 }
 
@@ -235,8 +235,8 @@ func Get(root string, id int64) (*Record, error) {
 		return nil, err
 	}
 	var r Record
-	err = db.QueryRow(`SELECT id, session_key, task_id, tool_call_id, tool_name, kind, phase, rel_path, status, summary, body, created_at_ms
-		FROM resource WHERE project_id=? AND id=?`, pid, id).Scan(
+	err = db.QueryRow(store.R(`SELECT id, session_key, task_id, tool_call_id, tool_name, kind, phase, rel_path, status, summary, body, created_at_ms
+		FROM resource WHERE project_id=? AND id=?`), pid, id).Scan(
 		&r.ID, &r.SessionKey, &r.TaskID, &r.ToolCallID, &r.ToolName, &r.Kind, &r.Phase, &r.RelPath, &r.Status, &r.Summary, &r.Body, &r.CreatedAtMs)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("resource: id %d not found", id)
@@ -312,7 +312,7 @@ func Search(root string, opt SearchOptions) (string, error) {
 	sqlQ += ` ORDER BY id DESC LIMIT ?`
 	args = append(args, limit)
 
-	rows, err := db.Query(sqlQ, args...)
+	rows, err := db.Query(store.R(sqlQ), args...)
 	if err != nil {
 		return "", err
 	}

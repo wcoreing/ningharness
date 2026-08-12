@@ -1,5 +1,5 @@
-// Package store 台面 SQLite（默认文件名仍为 desk.db；路径可由 DataDir 配置）。
-// 项目数据用 project_id 隔离；认账记忆（正文 / LESSONS）仍在文件系统。
+// Package store 台面持久层：默认 SQLite（desk.db）；可切换 MySQL（表前缀隔离，供嵌入方同实例共库）。
+// 项目数据用 project_id 隔离；认账记忆（正文 / LESSONS）仍可在文件系统。
 package store
 
 import (
@@ -9,7 +9,9 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
+	_ "github.com/go-sql-driver/mysql"
 	_ "modernc.org/sqlite"
 )
 
@@ -28,9 +30,14 @@ func sqliteDSN(path string) string {
 	)
 }
 
+type cachedConn struct {
+	db    *sql.DB
+	owned bool // false=宿主注入，CloseAll 不关
+}
+
 var (
 	mu    sync.Mutex
-	cache = map[string]*sql.DB{}
+	cache = map[string]*cachedConn{}
 
 	embedMu      sync.Mutex
 	embedDataDir string
@@ -65,11 +72,17 @@ func Path() (string, error) {
 	return filepath.Join(home, ".agentdesk", FileName), nil
 }
 
-// ProjectID 项目键：绝对路径（稳定、可跨表过滤）。
+// ProjectID 项目键。优先 Config.ProjectKey；无路径分隔的 root 视为逻辑键；否则绝对路径。
 func ProjectID(root string) string {
+	if k := configuredProjectKey(); k != "" {
+		return k
+	}
 	root = strings.TrimSpace(root)
 	if root == "" {
 		return ""
+	}
+	if !strings.ContainsAny(root, `/\`) {
+		return root
 	}
 	abs, err := filepath.Abs(root)
 	if err != nil {
@@ -78,26 +91,38 @@ func ProjectID(root string) string {
 	return filepath.Clean(abs)
 }
 
-// Open 打开唯一台面库。
+// Open 打开唯一台面库（按 ActiveConfig）。
 func Open() (*sql.DB, error) {
+	cfg := ActiveConfig()
+	if cfg.Driver == DriverMySQL {
+		return openMySQL(cfg)
+	}
+	if dir := strings.TrimSpace(cfg.DataDir); dir != "" {
+		return OpenAt(dir)
+	}
+	if dir := EmbedDataDir(); dir != "" {
+		return OpenAt(dir)
+	}
 	path, err := Path()
 	if err != nil {
 		return nil, err
 	}
-	db, err := openCached(cacheKey, path)
-	return db, err
+	return openCachedSQLite(cacheKey, path)
 }
 
-// OpenAt 打开指定目录下的 desk.db（测试）。
+// OpenAt 打开指定目录下的 desk.db（sqlite / 测试）。
 func OpenAt(dir string) (*sql.DB, error) {
+	if IsMySQL() {
+		return Open()
+	}
 	dir = strings.TrimSpace(dir)
 	if dir == "" {
 		return Open()
 	}
-	return openCached("at:"+dir, filepath.Join(dir, FileName))
+	return openCachedSQLite("at:"+dir, filepath.Join(dir, FileName))
 }
 
-// OpenProject 打开唯一库并为该项目完成迁移（旧项目 desk.db / JSON）。
+// OpenProject 打开唯一库并为该项目完成迁移（旧项目 desk.db / JSON；mysql 仅 EnsureProject）。
 func OpenProject(root string) (*sql.DB, error) {
 	root = strings.TrimSpace(root)
 	if root == "" {
@@ -111,15 +136,25 @@ func OpenProject(root string) (*sql.DB, error) {
 	if err := EnsureProject(db, root); err != nil {
 		return nil, err
 	}
-	if err := migrateProjectInto(db, root, pid); err != nil {
-		return nil, fmt.Errorf("deskdb migrate project: %w", err)
+	if !IsMySQL() {
+		if err := migrateProjectInto(db, root, pid); err != nil {
+			return nil, fmt.Errorf("deskdb migrate project: %w", err)
+		}
 	}
 	return db, nil
 }
 
-// OpenProjectAt 测试：库在 dir。
+// OpenProjectAt 测试：库在 dir（sqlite）；mysql 忽略 dir。
 func OpenProjectAt(dir, root string) (*sql.DB, error) {
-	db, err := OpenAt(dir)
+	var (
+		db  *sql.DB
+		err error
+	)
+	if IsMySQL() {
+		db, err = Open()
+	} else {
+		db, err = OpenAt(dir)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -127,8 +162,10 @@ func OpenProjectAt(dir, root string) (*sql.DB, error) {
 		return nil, err
 	}
 	pid := ProjectID(root)
-	if err := migrateProjectInto(db, root, pid); err != nil {
-		return nil, err
+	if !IsMySQL() {
+		if err := migrateProjectInto(db, root, pid); err != nil {
+			return nil, err
+		}
 	}
 	return db, nil
 }
@@ -139,8 +176,16 @@ func EnsureProject(db *sql.DB, root string) error {
 	if pid == "" {
 		return fmt.Errorf("store: empty project id")
 	}
-	_, err := db.Exec(`INSERT INTO projects(id, root, updated_at_ms) VALUES(?,?,strftime('%s','now')*1000)
-		ON CONFLICT(id) DO UPDATE SET root=excluded.root, updated_at_ms=excluded.updated_at_ms`, pid, pid)
+	rootVal := strings.TrimSpace(root)
+	if rootVal == "" {
+		rootVal = pid
+	}
+	q := Upsert("projects",
+		[]string{"id", "root", "updated_at_ms"},
+		[]string{"id"},
+		[]string{"root", "updated_at_ms"},
+	)
+	_, err := db.Exec(q, pid, rootVal, time.Now().UnixMilli())
 	return err
 }
 
@@ -154,19 +199,69 @@ func OpenGlobalAt(dir string) (*sql.DB, error) {
 func CloseAll() {
 	mu.Lock()
 	defer mu.Unlock()
-	for k, db := range cache {
-		_ = db.Close()
+	for k, c := range cache {
+		if c.owned {
+			_ = c.db.Close()
+		}
 		delete(cache, k)
 	}
 	SetEmbedDataDir("")
 }
-func ResetCacheForTest() { CloseAll() }
+func ResetCacheForTest() {
+	CloseAll()
+	Configure(Config{})
+}
 
-func openCached(key, path string) (*sql.DB, error) {
+func openMySQL(cfg Config) (*sql.DB, error) {
 	mu.Lock()
 	defer mu.Unlock()
-	if db, ok := cache[key]; ok {
-		return db, nil
+	key := "mysql:" + cfg.TablePrefix + ":" + cfg.DSN
+	if cfg.DB != nil {
+		key = fmt.Sprintf("mysql-inject:%p:%s", cfg.DB, cfg.TablePrefix)
+	}
+	if c, ok := cache[key]; ok {
+		return c.db, nil
+	}
+	var (
+		db    *sql.DB
+		owned bool
+		err   error
+	)
+	if cfg.DB != nil {
+		db = cfg.DB
+		owned = false
+	} else {
+		if cfg.DSN == "" {
+			return nil, fmt.Errorf("store: mysql requires DSN or DB")
+		}
+		db, err = sql.Open("mysql", cfg.DSN)
+		if err != nil {
+			return nil, err
+		}
+		db.SetMaxOpenConns(20)
+		db.SetMaxIdleConns(5)
+		db.SetConnMaxLifetime(time.Hour)
+		if err := db.Ping(); err != nil {
+			_ = db.Close()
+			return nil, err
+		}
+		owned = true
+	}
+	if err := ensureSchemaMySQL(db); err != nil {
+		if owned {
+			_ = db.Close()
+		}
+		return nil, err
+	}
+	cache[key] = &cachedConn{db: db, owned: owned}
+	return db, nil
+}
+
+func openCachedSQLite(key, path string) (*sql.DB, error) {
+	mu.Lock()
+	defer mu.Unlock()
+	if c, ok := cache[key]; ok {
+		return c.db, nil
 	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return nil, err
@@ -175,14 +270,13 @@ func openCached(key, path string) (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	// 唯一台面库：串行化访问。多 conn 时 busy_timeout 也挡不住写写冲突风暴。
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
 	if err := ensureSchema(db); err != nil {
 		_ = db.Close()
 		return nil, err
 	}
-	cache[key] = db
+	cache[key] = &cachedConn{db: db, owned: true}
 	return db, nil
 }
 
@@ -204,7 +298,6 @@ func ensureSchema(db *sql.DB) error {
 	if ver > CurrentSchemaVersion {
 		return fmt.Errorf("store: schema version %d newer than supported %d", ver, CurrentSchemaVersion)
 	}
-	// 统一库前的残版：丢掉旧台面表后按最新 framework schema 重建
 	if ver > 0 && ver < 2 {
 		if err := wipeIncompatible(db); err != nil {
 			return err
@@ -289,7 +382,10 @@ func wipeIncompatible(db *sql.DB) error {
 // MetaGet / MetaSet 按项目键值。
 func MetaGet(db *sql.DB, projectID, key string) (string, error) {
 	var v string
-	err := db.QueryRow(`SELECT value FROM meta WHERE project_id=? AND key=?`, projectID, key).Scan(&v)
+	err := db.QueryRow(
+		fmt.Sprintf(`SELECT value FROM %s WHERE project_id=? AND %s=?`, T("meta"), quoteMetaKeyCol()),
+		projectID, key,
+	).Scan(&v)
 	if err == sql.ErrNoRows {
 		return "", nil
 	}
@@ -297,7 +393,18 @@ func MetaGet(db *sql.DB, projectID, key string) (string, error) {
 }
 
 func MetaSet(db *sql.DB, projectID, key, value string) error {
-	_, err := db.Exec(`INSERT INTO meta(project_id, key, value) VALUES(?,?,?)
-		ON CONFLICT(project_id, key) DO UPDATE SET value=excluded.value`, projectID, key, value)
+	q := Upsert("meta",
+		[]string{"project_id", quoteMetaKeyCol(), "value"},
+		[]string{"project_id", quoteMetaKeyCol()},
+		[]string{"value"},
+	)
+	_, err := db.Exec(q, projectID, key, value)
 	return err
+}
+
+func quoteMetaKeyCol() string {
+	if IsMySQL() {
+		return "`key`"
+	}
+	return "key"
 }
