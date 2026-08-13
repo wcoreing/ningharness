@@ -139,6 +139,7 @@ func (rt *Runtime) PersistTurn(ctx context.Context, st *lifecycle.RunState) erro
 			Reply:       reply,
 			Feedforward: st.Feedforward,
 			SkillIDs:    memory.SkillIDsFromValues(st.Values),
+			Notes:       memory.NotesFromToolErrors(memory.ToolErrorsFromValues(st.Values)),
 		})
 	}
 	return nil

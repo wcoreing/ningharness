@@ -10,6 +10,9 @@ import (
 // SkillIDsValueKey 可写入 RunState.Values，供 assemble 传入 Lesson 匹配。
 const SkillIDsValueKey = "memory.skillIDs"
 
+// ToolErrorsValueKey 可写入 RunState.Values：本轮工具失败摘要（[]string），供 Ingest / 晋升 lesson。
+const ToolErrorsValueKey = "memory.toolErrors"
+
 // AssembleInput Memory.Assemble 入参（窄于 RunState，避免本包依赖 lifecycle）。
 type AssembleInput struct {
 	Root                string
@@ -29,6 +32,8 @@ type IngestInput struct {
 	Reply       string
 	Feedforward string
 	SkillIDs    []string
+	// Notes 附加沉淀（如工具失败摘要）；写入 JSONL，不替代 Reply。
+	Notes string
 }
 
 // Memory 可换记忆实现：返回应并入前馈的片段（追加，不覆盖 Existing）。
@@ -56,10 +61,28 @@ func MergeFeedforward(base, patch string) string {
 
 // SkillIDsFromValues 从 RunState.Values 解析 skill id 列表。
 func SkillIDsFromValues(values map[string]any) []string {
+	return stringSliceFromValues(values, SkillIDsValueKey)
+}
+
+// ToolErrorsFromValues 从 RunState.Values 解析本轮工具失败摘要。
+func ToolErrorsFromValues(values map[string]any) []string {
+	return stringSliceFromValues(values, ToolErrorsValueKey)
+}
+
+// NotesFromToolErrors 把工具失败列表压成 Ingest.Notes。
+func NotesFromToolErrors(errs []string) string {
+	errs = trimIDs(errs)
+	if len(errs) == 0 {
+		return ""
+	}
+	return "tool_errors:\n- " + strings.Join(errs, "\n- ")
+}
+
+func stringSliceFromValues(values map[string]any, key string) []string {
 	if len(values) == 0 {
 		return nil
 	}
-	v, ok := values[SkillIDsValueKey]
+	v, ok := values[key]
 	if !ok || v == nil {
 		return nil
 	}

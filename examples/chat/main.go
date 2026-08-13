@@ -22,6 +22,7 @@ var einoCfg = eino.Opts{
 	APIKey:  "sk-...",                    // required
 	BaseURL: "https://api.openai.com/v1", // gateway / compatible endpoint
 	Model:   "gpt-4o-mini",
+	Stream:  true, // 框架开流；也可用 defaults.Opts{Stream:true} 或 ChatStream
 }
 
 func main() {
@@ -66,12 +67,14 @@ Cursor (~/.cursor/mcp.json):
 }
 `, url)
 
-	reply, err := rt.Chat(context.Background(), msg)
+	reply, err := rt.ChatStream(context.Background(), msg, func(delta string) {
+		fmt.Print(delta)
+	})
 	if err != nil {
 		fatal(err)
 	}
+	_ = reply
 	fmt.Println()
-	fmt.Println(reply)
 	fmt.Println()
 	fmt.Println("MCP still up — Ctrl+C to stop")
 

@@ -47,6 +47,7 @@ func (f *FileIngest) Ingest(ctx context.Context, in IngestInput) error {
 		SkillIDs:   in.SkillIDs,
 		Prompt:     trimRunes(in.Prompt, ingestBodyMaxRunes),
 		Reply:      trimRunes(in.Reply, ingestBodyMaxRunes),
+		Notes:      trimRunes(in.Notes, ingestBodyMaxRunes),
 	}
 	raw, err := json.Marshal(rec)
 	if err != nil {
@@ -70,6 +71,7 @@ type ingestRec struct {
 	SkillIDs   []string `json:"skillIds,omitempty"`
 	Prompt     string   `json:"prompt,omitempty"`
 	Reply      string   `json:"reply,omitempty"`
+	Notes      string   `json:"notes,omitempty"`
 }
 
 func trimRunes(s string, max int) string {

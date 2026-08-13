@@ -1,4 +1,4 @@
-// Package eino 可选默认 Guest：Eino ReAct + Gateway.Invoke 核工具。
+// Package eino 可选默认 Guest：Eino ReAct + Gateway 工具。
 // 不 import 本包则不拉起 Eino；也可用自备 Guest 替换。
 package eino
 
@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/wcoreing/ningharness/guest"
@@ -32,6 +33,18 @@ type Opts struct {
 	Thinking    bool
 	Instruction string
 	MaxIters    int // 默认 24
+
+	// Stream 为 true 时 EnableStreaming，按 chunk 推送增量（见 OnDelta / guest.WithDeltaHandler）。
+	// 默认 false（整段回复）。
+	Stream bool
+	// OnDelta 流式文本增量回调；Stream=true 或本字段非空时都会开流。
+	// 也可不设，改由 defaults.ChatStream / guest.WithDeltaHandler(ctx) 按轮注入。
+	OnDelta func(delta string)
+
+	// ExtraTools 追加到默认核工具之后（产品动态工具）。
+	ExtraTools []tool.BaseTool
+	// BuildTools 若非空则完全替换默认 buildTools（仍会再 Append ExtraTools）。
+	BuildTools func(gw *toolgateway.Gateway) ([]tool.BaseTool, error)
 }
 
 // New 构造默认 Eino Guest；gw 不可空；模型经 guest/model.NewChatModel。
@@ -61,9 +74,17 @@ func New(gw *toolgateway.Gateway, opts Opts) (guest.Guest, error) {
 	if maxIt <= 0 {
 		maxIt = 24
 	}
-	tools, err := buildTools(gw)
+	var tools []tool.BaseTool
+	if opts.BuildTools != nil {
+		tools, err = opts.BuildTools(gw)
+	} else {
+		tools, err = buildTools(gw)
+	}
 	if err != nil {
 		return nil, err
+	}
+	if len(opts.ExtraTools) > 0 {
+		tools = append(tools, opts.ExtraTools...)
 	}
 	return &einoGuest{
 		gw:          gw,
@@ -72,6 +93,8 @@ func New(gw *toolgateway.Gateway, opts Opts) (guest.Guest, error) {
 		instruction: instruction,
 		maxIters:    maxIt,
 		modelLabel:  modelName,
+		stream:      opts.Stream || opts.OnDelta != nil,
+		onDelta:     opts.OnDelta,
 	}, nil
 }
 
@@ -82,6 +105,8 @@ type einoGuest struct {
 	instruction string
 	maxIters    int
 	modelLabel  string
+	stream      bool
+	onDelta     func(string)
 }
 
 func (g *einoGuest) Run(ctx context.Context, in guest.Input) (string, error) {
@@ -105,7 +130,22 @@ func (g *einoGuest) Run(ctx context.Context, in guest.Input) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	runner := adk.NewRunner(ctx, adk.RunnerConfig{Agent: agentInst, EnableStreaming: false})
+
+	deltaFn := g.onDelta
+	if ctxFn := guest.DeltaHandler(ctx); ctxFn != nil {
+		if deltaFn == nil {
+			deltaFn = ctxFn
+		} else {
+			base := deltaFn
+			deltaFn = func(d string) {
+				base(d)
+				ctxFn(d)
+			}
+		}
+	}
+	enableStream := g.stream || deltaFn != nil
+
+	runner := adk.NewRunner(ctx, adk.RunnerConfig{Agent: agentInst, EnableStreaming: enableStream})
 	iter := runner.Run(ctx, []*schema.Message{schema.UserMessage(message)})
 	var reply strings.Builder
 	for {
@@ -129,10 +169,8 @@ func (g *einoGuest) Run(ctx context.Context, in guest.Input) (string, error) {
 		if mo.Role != schema.Assistant {
 			continue
 		}
-		if mo.Message != nil {
-			if c := strings.TrimSpace(mo.Message.Content); c != "" {
-				reply.WriteString(c)
-			}
+		if err := consumeAssistantOutput(mo, &reply, deltaFn); err != nil {
+			return "", err
 		}
 	}
 	out := strings.TrimSpace(reply.String())
@@ -140,6 +178,41 @@ func (g *einoGuest) Run(ctx context.Context, in guest.Input) (string, error) {
 		out = "(no text reply)"
 	}
 	return out, nil
+}
+
+func consumeAssistantOutput(mo *adk.MessageVariant, reply *strings.Builder, onDelta func(string)) error {
+	if mo == nil {
+		return nil
+	}
+	if mo.IsStreaming && mo.MessageStream != nil {
+		for {
+			chunk, err := mo.MessageStream.Recv()
+			if err == io.EOF {
+				return nil
+			}
+			if err != nil {
+				return err
+			}
+			if chunk == nil {
+				continue
+			}
+			if c := chunk.Content; c != "" {
+				reply.WriteString(c)
+				if onDelta != nil {
+					onDelta(c)
+				}
+			}
+		}
+	}
+	if mo.Message != nil {
+		if c := mo.Message.Content; c != "" {
+			reply.WriteString(c)
+			if onDelta != nil {
+				onDelta(c)
+			}
+		}
+	}
+	return nil
 }
 
 type fileArgs struct {

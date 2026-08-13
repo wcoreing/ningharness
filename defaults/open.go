@@ -41,8 +41,11 @@ type Opts struct {
 	WithoutMemory bool
 	// WithoutSkill 为 true 时不装默认 Disk Skill（可稍后 SetSkill）。
 	WithoutSkill bool
-	// Eino 覆盖默认 Guest 配置（API Key 等）。
+	// Eino 覆盖默认 Guest 配置（API Key、Stream 等）。
 	Eino eino.Opts
+	// Stream 装配到 Eino.Stream（显式开流式）；与 Eino.Stream 任一为 true 即开。
+	// 按轮回调请用 ChatStream，或 Open 时设 Eino.OnDelta。
+	Stream bool
 	// PrepareGateway 在 ToolGateway 建好、MCP 启动前调用（可 RegisterHandler）。
 	PrepareGateway func(th *toolgateway.Gateway)
 	// ExtraTools 传给 MCP HTTP（RegisterCoreTools 之后 AddTool）。
@@ -128,7 +131,11 @@ func Open(opts Opts) (*Runtime, error) {
 	}
 
 	if !opts.WithoutEino {
-		g, err := eino.New(th, opts.Eino)
+		einoOpts := opts.Eino
+		if opts.Stream {
+			einoOpts.Stream = true
+		}
+		g, err := eino.New(th, einoOpts)
 		if err != nil {
 			_ = rt.Close()
 			return nil, err
@@ -217,12 +224,21 @@ func (rt *Runtime) SetLifecycle(lc *lifecycle.Lifecycle) {
 
 // Chat 用当前 Guest 经默认生命周期发一句话；无 Guest 时报错。
 func (rt *Runtime) Chat(ctx context.Context, message string) (string, error) {
+	return rt.ChatStream(ctx, message, nil)
+}
+
+// ChatStream 同 Chat；onDelta 非空时本轮流式推送 assistant 文本增量（经 guest.WithDeltaHandler）。
+// 若 Open 时已 Eino.Stream/OnDelta，同样会开流；本参数按轮覆盖回调。
+func (rt *Runtime) ChatStream(ctx context.Context, message string, onDelta func(delta string)) (string, error) {
 	if rt == nil || rt.Guest == nil {
 		return "", fmt.Errorf("defaults: no Guest (Open with WithoutEino=false or SetGuest)")
 	}
 	msg := strings.TrimSpace(message)
 	if msg == "" {
 		return "", fmt.Errorf("defaults: empty message")
+	}
+	if onDelta != nil {
+		ctx = guest.WithDeltaHandler(ctx, onDelta)
 	}
 	st := &lifecycle.RunState{
 		Root:       rt.Root(),
