@@ -92,7 +92,7 @@ func Open(opts Opts) (*Runtime, error) {
 	rt := &Runtime{Harness: h, ToolGateway: th, ExtraTools: opts.ExtraTools}
 	rt.Lifecycle = lifecycle.NewDefault(rt)
 	if !opts.WithoutMemory {
-		rt.Memory = memory.NewLesson()
+		rt.Memory = memory.NewLessonWithPromotion()
 	}
 	if !opts.WithoutSkill {
 		rt.Skill = skill.NewDisk()

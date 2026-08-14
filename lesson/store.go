@@ -326,6 +326,37 @@ func ListActiveProject(root string, limit int) ([]Entry, error) {
 	return scanAll(rows)
 }
 
+// HasActiveContaining 是否已有 active 行正文包含 needle（用于晋升去重）。
+func HasActiveContaining(root, scope, needle string) bool {
+	needle = strings.TrimSpace(needle)
+	if needle == "" {
+		return false
+	}
+	scope = normalizeScope(scope)
+	if scope == "" {
+		scope = ScopeProject
+	}
+	var list []Entry
+	var err error
+	switch scope {
+	case ScopeProject:
+		list, err = ListActiveProject(root, 80)
+	case ScopePersonal:
+		list, err = ListActivePersonal(80)
+	default:
+		list, err = ListByScope(root, scope, 80)
+	}
+	if err != nil {
+		return false
+	}
+	for _, e := range list {
+		if strings.Contains(e.Body, needle) {
+			return true
+		}
+	}
+	return false
+}
+
 func HasAny(root, skillID string) bool {
 	list, err := ListBySkill(root, skillID)
 	return err == nil && len(list) > 0

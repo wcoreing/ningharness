@@ -1,7 +1,6 @@
 package workspace
 
 import (
-	"os"
 	"testing"
 )
 
@@ -45,9 +44,11 @@ func TestCountStripsMarkdownShell(t *testing.T) {
 }
 
 func TestCoverFileBand(t *testing.T) {
-	b, err := os.ReadFile("/Users/weining/AgentDesk/标书批写冒烟/user/总装/00-封面.md")
-	if err != nil {
-		t.Skip(err)
+	// 用内嵌样例代替本机绝对路径，避免绑定外部产品目录。
+	sample := "# 封面\n\n甲方名称\n项目名称\n"
+	n := Count(sample)
+	if n < 4 {
+		t.Fatalf("prose count=%d", n)
 	}
-	t.Logf("cover prose=%d raw=%d", Count(string(b)), CountRaw(string(b)))
+	t.Logf("cover prose=%d raw=%d", n, CountRaw(sample))
 }

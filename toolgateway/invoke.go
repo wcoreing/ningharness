@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	deskqueue "github.com/wcoreing/ningharness/job"
+	nhjob "github.com/wcoreing/ningharness/job"
 
 	"github.com/mark3labs/mcp-go/mcp"
 )
@@ -46,6 +46,7 @@ func (h *Gateway) CallNamedTool(ctx context.Context, name string, args map[strin
 		if tr != nil && callID != "" {
 			_ = tr.ToolResult(callID, name, err.Error(), false)
 		}
+		h.NoteToolError(name + ": " + err.Error())
 		return nil, err
 	}
 	res, err := fn(ctx, req)
@@ -53,6 +54,7 @@ func (h *Gateway) CallNamedTool(ctx context.Context, name string, args map[strin
 		if tr != nil && callID != "" {
 			_ = tr.ToolResult(callID, name, err.Error(), false)
 		}
+		h.NoteToolError(name + ": " + err.Error())
 		return nil, err
 	}
 	res = h.applyToolOutputBound(callID, name, res)
@@ -64,6 +66,11 @@ func (h *Gateway) CallNamedTool(ctx context.Context, name string, args map[strin
 			ok = false
 		}
 		_ = tr.ToolResult(callID, name, text, ok)
+		if !ok {
+			h.NoteToolError(name + ": " + trimToolErrBrief(text))
+		}
+	} else if res != nil && res.IsError {
+		h.NoteToolError(name + ": " + trimToolErrBrief(FormatToolResult(res)))
 	}
 	return res, nil
 }
@@ -80,7 +87,7 @@ func (h *Gateway) applyPendingSteer(res *mcp.CallToolResult) *mcp.CallToolResult
 	if strings.TrimSpace(steer) == "" {
 		return res
 	}
-	block := deskqueue.FormatSteerBlock(steer)
+	block := nhjob.FormatSteerBlock(steer)
 	base := strings.TrimSpace(FormatToolResult(res))
 	msg := base
 	if msg != "" {
@@ -96,6 +103,15 @@ func newTraceCallID() string {
 	var b [4]byte
 	_, _ = rand.Read(b[:])
 	return fmt.Sprintf("tc-%d-%s", time.Now().UnixMilli(), hex.EncodeToString(b[:]))
+}
+
+func trimToolErrBrief(s string) string {
+	s = strings.TrimSpace(s)
+	r := []rune(s)
+	if len(r) > 240 {
+		return string(r[:240]) + "…"
+	}
+	return s
 }
 
 func argsBriefForTrace(name string, args map[string]any) map[string]any {

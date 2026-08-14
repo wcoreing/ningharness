@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	SnapshotStartMarker = "<!-- agentdesk-snapshot-start -->"
-	SnapshotEndMarker   = "<!-- agentdesk-snapshot-end -->"
+	SnapshotStartMarker = "<!-- ningharness-snapshot-start -->"
+	SnapshotEndMarker   = "<!-- ningharness-snapshot-end -->"
 	historicalSnapNote  = "〔历史轮项目快照已省略；以最后一条 user 快照与磁盘为准〕"
 )
 

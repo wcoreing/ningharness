@@ -223,7 +223,7 @@ func migrateToV20(tx *sql.Tx) error {
 	return err
 }
 
-// migrateToV19: library_pack — 个人技能库索引（正文在 ~/.agentdesk/skill-library/packs/）。
+// migrateToV19: library_pack — 个人技能库索引（正文在 ~/.ningharness/skill-library/packs/）。
 func migrateToV19(tx *sql.Tx) error {
 	var n int
 	if err := tx.QueryRow(`SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='library_pack'`).Scan(&n); err != nil {
@@ -335,7 +335,7 @@ func migrateToV15(tx *sql.Tx) error {
 }
 
 func migrateEmbeddedSnapshotsToFeedforward(tx *sql.Tx) error {
-	rows, err := tx.Query(`SELECT id, content, feedforward FROM history_message WHERE role='user' AND content LIKE '%agentdesk-snapshot-start%'`)
+	rows, err := tx.Query(`SELECT id, content, feedforward FROM history_message WHERE role='user' AND content LIKE '%ningharness-snapshot-start%'`)
 	if err != nil {
 		return err
 	}
@@ -356,8 +356,8 @@ func migrateEmbeddedSnapshotsToFeedforward(tx *sql.Tx) error {
 	if err := rows.Err(); err != nil {
 		return err
 	}
-	const start = "<!-- agentdesk-snapshot-start -->"
-	const end = "<!-- agentdesk-snapshot-end -->"
+	const start = "<!-- ningharness-snapshot-start -->"
+	const end = "<!-- ningharness-snapshot-end -->"
 	for _, r := range list {
 		if strings.TrimSpace(r.ff) != "" {
 			continue

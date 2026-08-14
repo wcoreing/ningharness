@@ -83,6 +83,60 @@ func TestAbortKeepsIncomplete(t *testing.T) {
 	}
 }
 
+func TestResumeTaskEndWithUnpairedIsIncomplete(t *testing.T) {
+	root := t.TempDir()
+	w, err := Begin(root, "t-unpaired-end", "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = w.ToolCall("c1", "write_file", "x")
+	_ = w.ToolCall("c2", "read_file", "y")
+	_ = w.ToolResult("c2", "read_file", "ok", true)
+	_ = w.End("ok", "") // 仍有 c1 未配对
+	st, _, err := InspectFile(w.Path())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.Complete {
+		t.Fatal("task_end with unpaired must not be complete")
+	}
+	if len(st.UnpairedCalls) != 1 || st.UnpairedCalls[0] != "c1" {
+		t.Fatalf("unpaired=%v", st.UnpairedCalls)
+	}
+	if st.EndedStatus != "ok" {
+		t.Fatalf("ended status should still record: %+v", st)
+	}
+}
+
+func TestResumePairedWithoutEndIsIncomplete(t *testing.T) {
+	root := t.TempDir()
+	w, err := Begin(root, "t-no-end", "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = w.ToolCall("c1", "grep", "x")
+	_ = w.ToolResult("c1", "grep", "hit", true)
+	st, _, err := InspectFile(w.Path())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.Complete || len(st.UnpairedCalls) != 0 {
+		t.Fatalf("want incomplete with no unpaired, got %+v", st)
+	}
+}
+
+func TestResumeOrphanResultIgnored(t *testing.T) {
+	evs := []Event{
+		{Type: TypeTaskBegin, TaskID: "t"},
+		{Type: TypeToolResult, ToolCallID: "ghost", Name: "read_file"},
+		{Type: TypeTaskEnd, Status: "ok"},
+	}
+	st := Inspect(evs)
+	if !st.Complete || len(st.UnpairedCalls) != 0 {
+		t.Fatalf("%+v", st)
+	}
+}
+
 func TestBriefTrim(t *testing.T) {
 	root := t.TempDir()
 	w, err := Begin(root, "t4", "", "")

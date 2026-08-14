@@ -195,6 +195,16 @@ func RegisterCoreTools(s *server.MCPServer, h *Gateway) {
 		mcp.WithString("session", mcp.Description("空/active=侧栏当前会话；isolated=隐藏 once:queue")),
 	), h.toolEnqueueGoal)
 
+	s.AddTool(mcp.NewTool("resume_goal",
+		mcp.WithDescription("人工续跑 blocked Goal：GOAL.yaml status→active，队列 Job 重新排队。须已写 reason 的受阻任务。"),
+		mcp.WithString("task_id", mcp.Required(), mcp.Description("Goal 任务 id（enqueue_goal 回执）")),
+	), h.toolResumeGoal)
+
+	s.AddTool(mcp.NewTool("get_goal_status",
+		mcp.WithDescription("读 Goal 控制面与队列状态（objective/status/reason/queue_status）。"),
+		mcp.WithString("task_id", mcp.Required(), mcp.Description("Goal 任务 id")),
+	), h.toolGetGoalStatus)
+
 	s.AddTool(mcp.NewTool("enqueue_agent_turns_for_paths",
 		mcp.WithDescription("按路径入队批任务（回执=已入队未落盘）。内部串行多节；prompt_template 可含 {path}。最多 50 路径。"),
 		mcp.WithArray("rel_paths", mcp.Required(), mcp.Description("相对路径列表"), mcp.WithStringItems()),

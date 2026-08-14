@@ -26,9 +26,12 @@ type Spec struct {
 	MaxRounds   int
 }
 
+// File GOAL.yaml 控制面。
 type File struct {
 	Objective string `yaml:"objective"`
 	Status    Status `yaml:"status"`
-	// Next 遗留字段（旧 GOAL.yaml 可能仍有）；Desk 不再据此推进工序。读入保留、不强制写入。
+	// Reason status=blocked 时的受阻说明（给人/resume/lesson）；其它状态可空。
+	Reason string `yaml:"reason,omitempty"`
+	// Next 遗留字段；读入保留、不强制写入。
 	Next string `yaml:"next,omitempty"`
 }

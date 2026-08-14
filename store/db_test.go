@@ -32,8 +32,8 @@ func TestOpenProjectEmpty(t *testing.T) {
 	if file == "" || filepath.Base(file) != FileName {
 		t.Fatalf("pragma file=%q", file)
 	}
-	if !strings.Contains(filepath.ToSlash(file), "/.agentdesk/") {
-		t.Fatalf("want db under .agentdesk, got %q", file)
+	if !strings.Contains(filepath.ToSlash(file), "/.ningharness/") {
+		t.Fatalf("want db under .ningharness, got %q", file)
 	}
 }
 
@@ -41,12 +41,12 @@ func TestMigrateSessionsJSON(t *testing.T) {
 	ResetCacheForTest()
 	defer ResetCacheForTest()
 	root := t.TempDir()
-	ad := filepath.Join(root, ".agentdesk")
-	if err := os.MkdirAll(ad, 0o755); err != nil {
+	meta := filepath.Join(root, ".ningharness")
+	if err := os.MkdirAll(meta, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	raw := `{"activeId":"main","sessions":[{"id":"main","title":"main","orchKey":"o","updatedAt":1,"messages":[{"role":"user","content":"hi","createdAt":1}]}]}`
-	if err := os.WriteFile(filepath.Join(ad, "sessions.json"), []byte(raw), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(meta, "sessions.json"), []byte(raw), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	db, err := OpenProject(root)
@@ -58,13 +58,13 @@ func TestMigrateSessionsJSON(t *testing.T) {
 	if err := db.QueryRow(`SELECT COUNT(*) FROM history_message WHERE project_id=?`, pid).Scan(&n); err != nil || n != 1 {
 		t.Fatalf("history_message=%d err=%v", n, err)
 	}
-	if fileExists(filepath.Join(ad, "sessions.json")) {
+	if fileExists(filepath.Join(meta, "sessions.json")) {
 		t.Fatal("sessions.json should be removed")
 	}
 	var file string
 	_ = db.QueryRow(`SELECT file FROM pragma_database_list WHERE name='main'`).Scan(&file)
-	if !strings.Contains(filepath.ToSlash(file), "/.agentdesk/") {
-		t.Fatalf("want db under .agentdesk, got %q", file)
+	if !strings.Contains(filepath.ToSlash(file), "/.ningharness/") {
+		t.Fatalf("want db under .ningharness, got %q", file)
 	}
 }
 

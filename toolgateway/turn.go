@@ -21,12 +21,12 @@ func (h *Gateway) ClearTurnProjection() {
 	h.ProjectTurn("", "", "", "")
 }
 
-// FinishTurn 一轮收尾唯一入口：收 Trace + 清投影（幂等）。
+// FinishTurn 一轮收尾唯一入口：收 Trace + 撤授权 + 清投影（幂等）。
 // 成功/失败都应由 RunState.OnExit 调用，避免 EndTask 与 OnExit 双写。
 func (h *Gateway) FinishTurn(status, errMsg string) {
 	if h == nil {
 		return
 	}
 	h.DisarmTaskTrace(status, errMsg)
-	h.ClearTurnProjection()
+	h.DisarmTurnInterceptor()
 }

@@ -20,13 +20,13 @@ func (h *Gateway) projectRoot() (string, error) {
 func (h *Gateway) projectRootLocked() (string, error) {
 	p := h.ws.Current()
 	if p == nil {
-		if env := strings.TrimSpace(os.Getenv("AGENTDESK_PROJECT")); env != "" {
+		if env := strings.TrimSpace(os.Getenv("NINGHARNESS_PROJECT")); env != "" {
 			if _, err := h.ws.Open(env); err != nil {
 				return "", err
 			}
 			return h.ws.Current().Root, nil
 		}
-		return "", fmt.Errorf("no project: call use_project first or set AGENTDESK_PROJECT")
+		return "", fmt.Errorf("no project: call use_project first or set NINGHARNESS_PROJECT")
 	}
 	return p.Root, nil
 }

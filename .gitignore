@@ -4,3 +4,6 @@
 .DS_Store
 *.db
 *.db-*
+
+# local product residue
+.agentdesk/

@@ -95,6 +95,8 @@ func (h *Gateway) coreHandlerMap() map[string]ToolHandler {
 		"get_task_trace":                h.toolGetTaskTrace,
 		"enqueue_agent_turn":            h.toolEnqueueAgentTurn,
 		"enqueue_goal":                  h.toolEnqueueGoal,
+		"resume_goal":                   h.toolResumeGoal,
+		"get_goal_status":               h.toolGetGoalStatus,
 		"enqueue_agent_turns_for_paths": h.toolEnqueueAgentTurnsForPaths,
 		"list_queue":                    h.toolListQueue,
 		"cancel_queue_task":             h.toolCancelQueueTask,

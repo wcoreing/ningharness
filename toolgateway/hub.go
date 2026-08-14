@@ -2,6 +2,7 @@
 // 层职责：改世界只经本包；不定义生命周期。
 // 工具分发走 Registry（RegisterHandler / ensureCoreHandlers），避免 CallNamedTool 巨型 switch。
 // 本轮身份用 ProjectTurn / FinishTurn 与 lifecycle.RunState 同步（投影，非第二真相）。
+// 壳层 UI 状态见 shell_ui.go；产品回调见 HostHooks（嵌入本结构以保持字段赋值兼容）。
 package toolgateway
 
 import (
@@ -9,24 +10,19 @@ import (
 	"strings"
 	"sync"
 
-	deskqueue "github.com/wcoreing/ningharness/job"
+	nhjob "github.com/wcoreing/ningharness/job"
 	session "github.com/wcoreing/ningharness/session"
 	"github.com/wcoreing/ningharness/trace"
 	"github.com/wcoreing/ningharness/workspace"
 )
 
-const ServerVersion = "0.1.3"
-
-// ShellUI 产品壳长寿 UI 状态（非 Turn；与投影分离）。
-type ShellUI struct {
-	FocusRel      string
-	ContentTabs   string
-	TreeSelection string
-}
+const ServerVersion = "0.1.6"
 
 // Gateway 工具网关：注册 / 授权 / Invoke / MCP。
-// 分区：ShellUI | 当前轮投影 | 工具 Registry | 产品回调。勿把 UI 当 Turn 真相。
+// 分区：HostHooks（壳回调）| ShellUI | 当前轮投影 | 工具 Registry。勿把 UI 当 Turn 真相。
 type Gateway struct {
+	HostHooks
+
 	mu   sync.Mutex
 	ws   *workspace.Service
 	sess *session.Store
@@ -45,18 +41,9 @@ type Gateway struct {
 	turnParentTask string
 	turnJobID      string
 	taskTrace      *trace.Writer
+	turnToolErrors []string
 
-	Queue *deskqueue.Manager
-
-	// --- 产品回调（壳层注入）---
-	OnOpen          func(root string)
-	OnSessionChange func()
-	OnPathsChanged  func(writeID string, paths []string, wordCounts map[string]int)
-	OnPathsMoved    func(movedTo map[string]string)
-	OnWriteWorktree func(relPath, content, writeID string) error
-	OnWriteBytes    func(relPath string, data []byte, writeID string) error
-	// OnContextPatch 台面 ContextPatch（pin/写盘等）；供 UI 订阅，不改写本轮开场前馈。
-	OnContextPatch func(patch any)
+	Queue *nhjob.Manager
 }
 
 func New(ws *workspace.Service, sess *session.Store) *Gateway {
@@ -71,52 +58,6 @@ func New(ws *workspace.Service, sess *session.Store) *Gateway {
 
 func (h *Gateway) Workspace() *workspace.Service { return h.ws }
 func (h *Gateway) Session() *session.Store       { return h.sess }
-
-func (h *Gateway) SetFocus(relPath string) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	h.ui.FocusRel = strings.TrimSpace(relPath)
-}
-
-func (h *Gateway) Focus() string {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	return h.ui.FocusRel
-}
-
-func (h *Gateway) SetContentTabsBrief(brief string) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	h.ui.ContentTabs = strings.TrimSpace(brief)
-}
-
-func (h *Gateway) ContentTabsBrief() string {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	return h.ui.ContentTabs
-}
-
-func (h *Gateway) SetTreeSelectionBrief(brief string) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	h.ui.TreeSelection = strings.TrimSpace(brief)
-}
-
-func (h *Gateway) TreeSelectionBrief() string {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	return h.ui.TreeSelection
-}
-
-// UI 返回壳 UI 快照（拷贝）。
-func (h *Gateway) UI() ShellUI {
-	if h == nil {
-		return ShellUI{}
-	}
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	return h.ui
-}
 
 func (h *Gateway) ArmTurnInterceptor(purpose string, allow map[string]bool) {
 	if h == nil {
@@ -140,6 +81,7 @@ func (h *Gateway) DisarmTurnInterceptor() {
 	h.turnSessionKey = ""
 	h.turnParentTask = ""
 	h.turnJobID = ""
+	h.turnToolErrors = nil
 }
 
 func (h *Gateway) SetTurnJobID(jobID string) {
@@ -273,18 +215,18 @@ func (h *Gateway) AnnounceSidebarAssistant(text string) {
 	}
 }
 
-func (h *Gateway) AnnounceQueueEnqueued(job deskqueue.Job) {
+func (h *Gateway) AnnounceQueueEnqueued(job nhjob.Job) {
 	if !session.IsHiddenSession(job.SessionKey) {
 		return
 	}
-	h.AnnounceSidebarAssistant(deskqueue.FormatSidebarEnqueue(job))
+	h.AnnounceSidebarAssistant(nhjob.FormatSidebarEnqueue(job))
 }
 
-func (h *Gateway) AnnounceQueueProgress(job deskqueue.Job, kind deskqueue.ProgressKind) {
+func (h *Gateway) AnnounceQueueProgress(job nhjob.Job, kind nhjob.ProgressKind) {
 	if !session.IsHiddenSession(job.SessionKey) {
 		return
 	}
-	h.AnnounceSidebarAssistant(deskqueue.FormatSidebarProgress(job, kind))
+	h.AnnounceSidebarAssistant(nhjob.FormatSidebarProgress(job, kind))
 }
 
 func (h *Gateway) pathExistsForAgent(rel string) bool {
@@ -294,4 +236,30 @@ func (h *Gateway) pathExistsForAgent(rel string) bool {
 	}
 	_, err := h.ws.ReadText(rel)
 	return err == nil
+}
+
+// NoteToolError 记录本轮工具失败摘要（供 Memory 晋升 lesson）。
+func (h *Gateway) NoteToolError(summary string) {
+	if h == nil {
+		return
+	}
+	summary = strings.TrimSpace(summary)
+	if summary == "" {
+		return
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.turnToolErrors = append(h.turnToolErrors, summary)
+}
+
+// DrainToolErrors 取出并清空本轮工具失败摘要。
+func (h *Gateway) DrainToolErrors() []string {
+	if h == nil {
+		return nil
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	out := append([]string(nil), h.turnToolErrors...)
+	h.turnToolErrors = nil
+	return out
 }

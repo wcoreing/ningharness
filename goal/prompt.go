@@ -45,8 +45,9 @@ current evidence. Do not set complete merely because you are stopping work.
 
 Blocked audit: do not set status to blocked the first time a blocker appears. Only
 set it after the same blocking condition has repeated for at least three consecutive
-goal rounds and no meaningful progress is possible without user input. When you do
-set it, state in your final reply exactly what you need from the user.
+goal rounds and no meaningful progress is possible without user input. When you set
+status to blocked, also set the reason field to a short concrete ask for the user
+(what is blocked and what input you need). State the same ask in your final reply.
 
 Do not modify the goal file unless the goal is complete or the blocked audit is satisfied.
 [/goal]`, round, control, strings.TrimSpace(embedded), maxRoundsOrDefault(spec.MaxRounds), plan))

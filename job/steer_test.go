@@ -5,9 +5,13 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/wcoreing/ningharness/store"
 )
 
 func TestSteerTakeAndFormat(t *testing.T) {
+	store.ResetCacheForTest()
+	t.Cleanup(store.ResetCacheForTest)
 	if got := FormatSteerBlock("改用减法"); !strings.Contains(got, "[user_steering]") || !strings.Contains(got, "改用减法") {
 		t.Fatalf("block=%q", got)
 	}
@@ -16,6 +20,7 @@ func TestSteerTakeAndFormat(t *testing.T) {
 		return "run-1", nil
 	}, nil)
 	m.Bind(root)
+	defer m.Shutdown()
 	job, err := m.EnqueueGoal(GoalEnqueue{Objective: "do thing", Title: "g", SessionKey: QueueSessionKey("x"), MaxRounds: 3})
 	if err != nil {
 		t.Fatal(err)
@@ -43,6 +48,8 @@ func TestSteerTakeAndFormat(t *testing.T) {
 }
 
 func TestSteerRunningDefault(t *testing.T) {
+	store.ResetCacheForTest()
+	t.Cleanup(store.ResetCacheForTest)
 	root := t.TempDir()
 	started := make(chan struct{})
 	m := New(func(ctx context.Context, _ Job) (string, error) {
@@ -51,6 +58,7 @@ func TestSteerRunningDefault(t *testing.T) {
 		return "", ctx.Err()
 	}, nil)
 	m.Bind(root)
+	defer m.Shutdown()
 	job, err := m.EnqueueSession("work", "", "t", "", "main", "", "")
 	if err != nil {
 		t.Fatal(err)

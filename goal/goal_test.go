@@ -83,13 +83,37 @@ func TestRunBlocked(t *testing.T) {
 		ControlPath: control,
 		MaxRounds:   5,
 	}, func(ctx context.Context, wire string, round int) error {
-		return os.WriteFile(control, []byte("objective: need help\nstatus: blocked\n"), 0o644)
+		return WriteFile(control, File{
+			Objective: "need help",
+			Status:    StatusBlocked,
+			Reason:    "need API key from user",
+		})
 	}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if out != OutcomeBlocked {
 		t.Fatalf("outcome=%q", out)
+	}
+	if got := ReadReason(control); got != "need API key from user" {
+		t.Fatalf("reason=%q", got)
+	}
+	if err := Resume(control); err != nil {
+		t.Fatal(err)
+	}
+	if ReadStatus(control) != StatusActive || ReadReason(control) != "" {
+		t.Fatalf("after resume status=%q reason=%q", ReadStatus(control), ReadReason(control))
+	}
+}
+
+func TestResumeNotBlocked(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "GOAL.yaml")
+	if err := WriteOnce(path, "x"); err != nil {
+		t.Fatal(err)
+	}
+	if err := Resume(path); err == nil {
+		t.Fatal("want error on active")
 	}
 }
 

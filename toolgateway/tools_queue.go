@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	deskqueue "github.com/wcoreing/ningharness/job"
+	"github.com/wcoreing/ningharness/goal"
+	nhjob "github.com/wcoreing/ningharness/job"
 
 	"github.com/mark3labs/mcp-go/mcp"
 )
@@ -26,7 +27,7 @@ func (h *Gateway) toolEnqueueAgentTurn(_ context.Context, req mcp.CallToolReques
 	// session: 空/active → 侧栏当前会话（对话栏可见，与练笔/章节入队一致）；
 	// isolated → once:queue:{id}（隐藏，并行批不串台）。
 	mode := strings.TrimSpace(strings.ToLower(req.GetString("session", "")))
-	var task deskqueue.Job
+	var task nhjob.Job
 	switch mode {
 	case "isolated", "once", "queue":
 		task, err = q.EnqueueIsolated(prompt, driver, title, target)
@@ -37,7 +38,7 @@ func (h *Gateway) toolEnqueueAgentTurn(_ context.Context, req mcp.CallToolReques
 		return toolErr("enqueue_agent_turn", err)
 	}
 	h.AnnounceQueueEnqueued(task)
-	return mcp.NewToolResultText(deskqueue.FormatEnqueueOK(task)), nil
+	return mcp.NewToolResultText(nhjob.FormatEnqueueOK(task)), nil
 }
 
 func (h *Gateway) toolEnqueueGoal(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -60,7 +61,7 @@ func (h *Gateway) toolEnqueueGoal(_ context.Context, req mcp.CallToolRequest) (*
 	default:
 		sessionKey = h.activeSessionKey()
 	}
-	task, err := q.EnqueueGoal(deskqueue.GoalEnqueue{
+	task, err := q.EnqueueGoal(nhjob.GoalEnqueue{
 		Objective:  objective,
 		Driver:     req.GetString("driver", ""),
 		Title:      req.GetString("title", ""),
@@ -71,7 +72,67 @@ func (h *Gateway) toolEnqueueGoal(_ context.Context, req mcp.CallToolRequest) (*
 		return toolErr("enqueue_goal", err)
 	}
 	h.AnnounceQueueEnqueued(task)
-	return mcp.NewToolResultText(deskqueue.FormatEnqueueOK(task)), nil
+	return mcp.NewToolResultText(nhjob.FormatEnqueueOK(task)), nil
+}
+
+func (h *Gateway) toolResumeGoal(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	q, err := h.requireQueue()
+	if err != nil {
+		return toolErr("resume_goal", err)
+	}
+	id, err := req.RequireString("task_id")
+	if err != nil {
+		return toolErr("resume_goal", err)
+	}
+	task, err := q.ResumeGoal(id)
+	if err != nil {
+		return toolErr("resume_goal", err)
+	}
+	h.AnnounceQueueEnqueued(task)
+	return mcp.NewToolResultText(fmt.Sprintf(
+		"已 resume goal · id=%s status=%s · GOAL.yaml → active；队列续跑",
+		task.ID, task.Status,
+	)), nil
+}
+
+func (h *Gateway) toolGetGoalStatus(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	q, err := h.requireQueue()
+	if err != nil {
+		return toolErr("get_goal_status", err)
+	}
+	id, err := req.RequireString("task_id")
+	if err != nil {
+		return toolErr("get_goal_status", err)
+	}
+	root, err := h.root()
+	if err != nil {
+		return toolErr("get_goal_status", err)
+	}
+	control := nhjob.GoalControlPath(root, id)
+	f, err := goal.ReadFile(control)
+	if err != nil {
+		return toolErr("get_goal_status", err)
+	}
+	snap := q.Snapshot()
+	var jobStatus, hint string
+	for _, j := range snap.Jobs {
+		if j.ID == id {
+			jobStatus = string(j.Status)
+			hint = j.ProgressHint
+			break
+		}
+	}
+	out := map[string]any{
+		"task_id":       id,
+		"control_path":  control,
+		"objective":     f.Objective,
+		"status":        string(f.Status),
+		"reason":        f.Reason,
+		"queue_status":  jobStatus,
+		"progress_hint": hint,
+	}
+	b, _ := json.MarshalIndent(out, "", "  ")
+	return mcp.NewToolResultText(string(b)), nil
 }
 
 func (h *Gateway) toolEnqueueAgentTurnsForPaths(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -93,7 +154,7 @@ func (h *Gateway) toolEnqueueAgentTurnsForPaths(_ context.Context, req mcp.CallT
 	for _, t := range tasks {
 		h.AnnounceQueueEnqueued(t)
 	}
-	msg := deskqueue.FormatEnqueueOK(tasks[0])
+	msg := nhjob.FormatEnqueueOK(tasks[0])
 	if len(tasks) > 1 {
 		msg = fmt.Sprintf("%s · batchJobs=%d", msg, len(tasks))
 	}
@@ -105,7 +166,7 @@ func (h *Gateway) toolListQueue(_ context.Context, _ mcp.CallToolRequest) (*mcp.
 	if err != nil {
 		return toolErr("list_queue", err)
 	}
-	raw, _ := json.MarshalIndent(deskqueue.FormatAgentSnapshot(q.Snapshot()), "", "  ")
+	raw, _ := json.MarshalIndent(nhjob.FormatAgentSnapshot(q.Snapshot()), "", "  ")
 	return mcp.NewToolResultText(string(raw)), nil
 }
 
@@ -138,7 +199,7 @@ func (h *Gateway) toolSteerQueueTask(_ context.Context, req mcp.CallToolRequest)
 	if err != nil {
 		return toolErr("steer_queue_task", err)
 	}
-	if note := deskqueue.FormatSteerForSession(text); note != "" {
+	if note := nhjob.FormatSteerForSession(text); note != "" {
 		root, _ := h.root()
 		sess := strings.TrimSpace(job.SessionKey)
 		if sess == "" {
@@ -169,7 +230,7 @@ func (h *Gateway) toolSetQueuePaused(_ context.Context, req mcp.CallToolRequest)
 	return mcp.NewToolResultText(fmt.Sprintf("paused=%v", paused)), nil
 }
 
-func (h *Gateway) requireQueue() (*deskqueue.Manager, error) {
+func (h *Gateway) requireQueue() (*nhjob.Manager, error) {
 	if h == nil || h.Queue == nil {
 		return nil, fmt.Errorf("queue requires Job manager（执行器未挂载）")
 	}

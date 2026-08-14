@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/wcoreing/ningharness/metadir"
 )
 
 const (
@@ -39,7 +41,7 @@ func isEphemeralRoot(root string) bool {
 	return abs == tmp || strings.HasPrefix(abs, tmp+sep)
 }
 
-// OpenProject 唯一库（生产 ~/.agentdesk/desk.db；测试 TempDir 内 desk.db）。
+// OpenProject 唯一库（生产家目录 desk.db；测试 TempDir 内 desk.db）。
 // 若 SetEmbedDataDir 已设（嵌入方 Open 带了 DataDir），则始终用该目录，
 // 保证 session/history 与 Harness.DB 同一文件。
 func openProjectDB(root string) (*sql.DB, error) {
@@ -47,8 +49,8 @@ func openProjectDB(root string) (*sql.DB, error) {
 		return OpenAt(dir)
 	}
 	if isEphemeralRoot(root) {
-		// 测试：库落在项目 .agentdesk/desk.db（隔离且被 gitignore）
-		return OpenAt(filepath.Join(root, ".agentdesk"))
+		// 测试：库落在项目元数据目录（项目 .ningharness）
+		return OpenAt(metadir.ProjectDir(root))
 	}
 	return Open()
 }
@@ -64,7 +66,7 @@ func migrateProjectInto(db *sql.DB, root, pid string) error {
 }
 
 func migrateLegacyProjectDB(db *sql.DB, root, pid string) error {
-	// 测试库就在 project/.agentdesk/desk.db，无独立旧库可迁。
+	// 测试库就在 project/.ningharness/desk.db，无独立旧库可迁。
 	if isEphemeralRoot(root) {
 		return nil
 	}
@@ -78,7 +80,7 @@ func migrateLegacyProjectDB(db *sql.DB, root, pid string) error {
 		_ = os.Remove(legacy + "-shm")
 		return nil
 	}
-	// 避免 ATTACH 自己（含测试：库就在 project/.agentdesk/desk.db）
+	// 避免 ATTACH 自己（含测试：库就在 project/.ningharness/desk.db）
 	if abs, err := filepath.Abs(legacy); err == nil {
 		var mainFile string
 		_ = db.QueryRow(`SELECT file FROM pragma_database_list WHERE name='main'`).Scan(&mainFile)
@@ -310,12 +312,12 @@ func migrateProjectJSON(db *sql.DB, root, pid string) error {
 
 func projectHasLegacyJSON(root string) bool {
 	paths := []string{
-		filepath.Join(root, ".agentdesk", "sessions.json"),
-		filepath.Join(root, ".agentdesk", "runs-index.json"),
-		filepath.Join(root, ".agentdesk", "queue.json"),
-		filepath.Join(root, ".agentdesk", "pins.json"),
-		filepath.Join(root, ".agentdesk", "last-reflect.json"),
-		filepath.Join(root, ".agentdesk", "review-session.json"),
+		filepath.Join(root, metadir.Name, "sessions.json"),
+		filepath.Join(root, metadir.Name, "runs-index.json"),
+		filepath.Join(root, metadir.Name, "queue.json"),
+		filepath.Join(root, metadir.Name, "pins.json"),
+		filepath.Join(root, metadir.Name, "last-reflect.json"),
+		filepath.Join(root, metadir.Name, "review-session.json"),
 	}
 	for _, p := range paths {
 		if fileExists(p) {
@@ -323,7 +325,7 @@ func projectHasLegacyJSON(root string) bool {
 		}
 	}
 	for _, sub := range []string{"runs", "file-timeline"} {
-		dir := filepath.Join(root, ".agentdesk", sub)
+		dir := filepath.Join(root, metadir.Name, sub)
 		ents, err := os.ReadDir(dir)
 		if err != nil {
 			continue
@@ -338,14 +340,14 @@ func projectHasLegacyJSON(root string) bool {
 }
 
 func removeProjectLegacyJSON(root string) {
-	_ = os.Remove(filepath.Join(root, ".agentdesk", "sessions.json"))
-	_ = os.Remove(filepath.Join(root, ".agentdesk", "runs-index.json"))
-	_ = os.Remove(filepath.Join(root, ".agentdesk", "queue.json"))
-	_ = os.Remove(filepath.Join(root, ".agentdesk", "pins.json"))
-	_ = os.Remove(filepath.Join(root, ".agentdesk", "last-reflect.json"))
-	_ = os.Remove(filepath.Join(root, ".agentdesk", "review-session.json"))
-	_ = os.RemoveAll(filepath.Join(root, ".agentdesk", "runs"))
-	_ = os.RemoveAll(filepath.Join(root, ".agentdesk", "file-timeline"))
+	_ = os.Remove(filepath.Join(root, metadir.Name, "sessions.json"))
+	_ = os.Remove(filepath.Join(root, metadir.Name, "runs-index.json"))
+	_ = os.Remove(filepath.Join(root, metadir.Name, "queue.json"))
+	_ = os.Remove(filepath.Join(root, metadir.Name, "pins.json"))
+	_ = os.Remove(filepath.Join(root, metadir.Name, "last-reflect.json"))
+	_ = os.Remove(filepath.Join(root, metadir.Name, "review-session.json"))
+	_ = os.RemoveAll(filepath.Join(root, metadir.Name, "runs"))
+	_ = os.RemoveAll(filepath.Join(root, metadir.Name, "file-timeline"))
 }
 
 func fileExists(p string) bool {
@@ -354,7 +356,7 @@ func fileExists(p string) bool {
 }
 
 func migrateSessionsTx(tx *sql.Tx, root, pid string) error {
-	p := filepath.Join(root, ".agentdesk", "sessions.json")
+	p := filepath.Join(root, metadir.Name, "sessions.json")
 	raw, err := os.ReadFile(p)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -414,7 +416,7 @@ func migrateSessionsTx(tx *sql.Tx, root, pid string) error {
 }
 
 func migrateRunsTx(tx *sql.Tx, root, pid string) error {
-	dir := filepath.Join(root, ".agentdesk", "runs")
+	dir := filepath.Join(root, metadir.Name, "runs")
 	ents, err := os.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -492,7 +494,7 @@ func migrateRunsTx(tx *sql.Tx, root, pid string) error {
 }
 
 func migrateQueueTx(tx *sql.Tx, root, pid string) error {
-	p := filepath.Join(root, ".agentdesk", "queue.json")
+	p := filepath.Join(root, metadir.Name, "queue.json")
 	raw, err := os.ReadFile(p)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -600,7 +602,7 @@ func upsertQueueTaskTx(tx *sql.Tx, pid string, t queueTaskJSON, ord int) error {
 }
 
 func migratePinsTx(tx *sql.Tx, root, pid string) error {
-	p := filepath.Join(root, ".agentdesk", "pins.json")
+	p := filepath.Join(root, metadir.Name, "pins.json")
 	raw, err := os.ReadFile(p)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -628,7 +630,7 @@ func migratePinsTx(tx *sql.Tx, root, pid string) error {
 }
 
 func migrateReflectTx(tx *sql.Tx, root, pid string) error {
-	p := filepath.Join(root, ".agentdesk", "last-reflect.json")
+	p := filepath.Join(root, metadir.Name, "last-reflect.json")
 	raw, err := os.ReadFile(p)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -640,7 +642,7 @@ func migrateReflectTx(tx *sql.Tx, root, pid string) error {
 }
 
 func migrateReviewTx(tx *sql.Tx, root, pid string) error {
-	p := filepath.Join(root, ".agentdesk", "review-session.json")
+	p := filepath.Join(root, metadir.Name, "review-session.json")
 	raw, err := os.ReadFile(p)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -652,7 +654,7 @@ func migrateReviewTx(tx *sql.Tx, root, pid string) error {
 }
 
 func migrateTimelineTx(tx *sql.Tx, root, pid string) error {
-	dir := filepath.Join(root, ".agentdesk", "file-timeline")
+	dir := filepath.Join(root, metadir.Name, "file-timeline")
 	ents, err := os.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {

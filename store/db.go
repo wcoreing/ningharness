@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/wcoreing/ningharness/metadir"
+
 	_ "github.com/go-sql-driver/mysql"
 	_ "modernc.org/sqlite"
 )
@@ -44,7 +46,7 @@ var (
 )
 
 // SetEmbedDataDir 嵌入方指定 desk.db 目录；空则清除。
-// OpenProject / history / session 将与此目录对齐，避免误写 ~/.agentdesk。
+// OpenProject / history / session 将与此目录对齐，避免误写家目录默认库。
 func SetEmbedDataDir(dir string) {
 	embedMu.Lock()
 	defer embedMu.Unlock()
@@ -58,18 +60,18 @@ func EmbedDataDir() string {
 	return embedDataDir
 }
 
-// ProjectPath 旧项目库路径（仅迁移用）。
+// ProjectPath 旧项目旁路库路径（仅迁移用）：root/.ningharness/desk.db。
 func ProjectPath(root string) string {
-	return filepath.Join(strings.TrimSpace(root), ".agentdesk", FileName)
+	return filepath.Join(strings.TrimSpace(root), metadir.Name, FileName)
 }
 
-// Path 唯一库路径 ~/.agentdesk/desk.db
+// Path 唯一库路径：~/.ningharness/desk.db。
 func Path() (string, error) {
-	home, err := os.UserHomeDir()
+	dir, err := metadir.HomeDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, ".agentdesk", FileName), nil
+	return filepath.Join(dir, FileName), nil
 }
 
 // ProjectID 项目键。优先 Config.ProjectKey；无路径分隔的 root 视为逻辑键；否则绝对路径。

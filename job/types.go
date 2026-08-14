@@ -49,7 +49,6 @@ type GoalEnqueue struct {
 const DefaultPathPrompt = `请按任务说明处理本节。完成后聊天只回路径与短确认，不要贴全文。`
 
 const (
-	relStore        = ".agentdesk/queue.json"
 	maxFinishedKeep = 80
 	maxEnqueuePaths = 50
 )

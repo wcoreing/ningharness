@@ -11,7 +11,7 @@ import (
 	"github.com/wcoreing/ningharness/skill"
 )
 
-// BeginTask 开 Trace，ProjectTurn 投影；OnExit→FinishTurn 为唯一收尾路径。
+// BeginTask 开 Trace，ProjectTurn 投影；按 purpose 武装工具层；OnExit→FinishTurn 为唯一收尾路径。
 func (rt *Runtime) BeginTask(ctx context.Context, st *lifecycle.RunState) error {
 	_ = ctx
 	if rt == nil || st == nil {
@@ -28,6 +28,11 @@ func (rt *Runtime) BeginTask(ctx context.Context, st *lifecycle.RunState) error 
 	}
 	th.ArmTaskTrace(root, st.TaskID, st.SessionKey, st.JobID)
 	th.ProjectTurn(st.TaskID, st.SessionKey, "", st.JobID)
+	if p, ok := st.Get("purpose"); ok {
+		if ps, _ := p.(string); strings.TrimSpace(ps) != "" {
+			th.ArmPurpose(ps)
+		}
+	}
 	st.OnExit(func(err error) {
 		status := "ok"
 		errMsg := ""
@@ -114,35 +119,45 @@ func (rt *Runtime) RunGuest(ctx context.Context, st *lifecycle.RunState) error {
 	return nil
 }
 
-// PersistTurn 落 assistant 气泡；若 Memory 实现 Ingester 则随后沉淀。
+// PersistTurn 落 assistant 气泡；汇集本轮工具失败后若 Memory 实现 Ingester 则沉淀（可无回复）。
 func (rt *Runtime) PersistTurn(ctx context.Context, st *lifecycle.RunState) error {
 	if rt == nil || st == nil {
 		return fmt.Errorf("defaults: nil runtime/state")
 	}
-	reply := strings.TrimSpace(st.Reply)
-	if reply == "" {
-		return nil
-	}
 	root := st.Root
 	if root == "" {
 		root = rt.Root()
+		st.Root = root
 	}
-	if _, err := rt.Session.Append(root, "", st.SessionKey, "assistant", reply, st.TaskID, ""); err != nil {
-		return err
+	if rt.ToolGateway != nil {
+		if errs := rt.ToolGateway.DrainToolErrors(); len(errs) > 0 {
+			st.Set(memory.ToolErrorsValueKey, errs)
+		}
 	}
-	if ing, ok := rt.Memory.(memory.Ingester); ok {
-		return ing.Ingest(ctx, memory.IngestInput{
-			Root:        root,
-			SessionKey:  st.SessionKey,
-			TaskID:      st.TaskID,
-			Prompt:      st.Prompt,
-			Reply:       reply,
-			Feedforward: st.Feedforward,
-			SkillIDs:    memory.SkillIDsFromValues(st.Values),
-			Notes:       memory.NotesFromToolErrors(memory.ToolErrorsFromValues(st.Values)),
-		})
+	reply := strings.TrimSpace(st.Reply)
+	if reply != "" {
+		if _, err := rt.Session.Append(root, "", st.SessionKey, "assistant", reply, st.TaskID, ""); err != nil {
+			return err
+		}
 	}
-	return nil
+	ing, ok := rt.Memory.(memory.Ingester)
+	if !ok {
+		return nil
+	}
+	notes := memory.NotesFromToolErrors(memory.ToolErrorsFromValues(st.Values))
+	if reply == "" && notes == "" {
+		return nil
+	}
+	return ing.Ingest(ctx, memory.IngestInput{
+		Root:        root,
+		SessionKey:  st.SessionKey,
+		TaskID:      st.TaskID,
+		Prompt:      st.Prompt,
+		Reply:       reply,
+		Feedforward: st.Feedforward,
+		SkillIDs:    memory.SkillIDsFromValues(st.Values),
+		Notes:       notes,
+	})
 }
 
 // EndTask 生命周期钩子点（供 Bus after）；投影/Trace 收尾只在 OnExit→FinishTurn。

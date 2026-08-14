@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	deskqueue "github.com/wcoreing/ningharness/job"
+	nhjob "github.com/wcoreing/ningharness/job"
 	"github.com/wcoreing/ningharness/session"
 	"github.com/wcoreing/ningharness/workspace"
 )
@@ -21,7 +21,7 @@ func TestInvokeEnqueueGoal(t *testing.T) {
 	}
 	h := New(ws, session.NewStore())
 	var sawPrompt string
-	m := deskqueue.New(func(ctx context.Context, job deskqueue.Job) (string, error) {
+	m := nhjob.New(func(ctx context.Context, job nhjob.Job) (string, error) {
 		sawPrompt = job.WirePrompt
 		if sawPrompt == "" {
 			sawPrompt = job.Prompt

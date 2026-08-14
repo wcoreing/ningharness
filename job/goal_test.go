@@ -119,3 +119,42 @@ func TestEnqueueGoalCancel(t *testing.T) {
 	_ = waitJobStatus(t, m, job.ID, StatusCancelled, 3*time.Second)
 	m.Shutdown()
 }
+
+func TestResumeGoalAfterBlocked(t *testing.T) {
+	root := t.TempDir()
+	var rounds atomic.Int32
+	m := New(func(ctx context.Context, task Job) (string, error) {
+		n := rounds.Add(1)
+		control := filepath.Join(root, ".ningharness", "goals", task.ID, "GOAL.yaml")
+		if n == 1 {
+			_ = os.WriteFile(control, []byte("objective: ship\nstatus: blocked\nreason: need key\n"), 0o644)
+		} else {
+			_ = os.WriteFile(control, []byte("objective: ship\nstatus: complete\n"), 0o644)
+		}
+		return "r", nil
+	}, nil)
+	m.Bind(root)
+	defer m.Shutdown()
+	job, err := m.EnqueueGoal(GoalEnqueue{Objective: "ship", Title: "g", MaxRounds: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	done := waitJobStatus(t, m, job.ID, StatusDone, 3*time.Second)
+	if !strings.Contains(done.ProgressHint, "受阻") || done.LastError != "need key" {
+		t.Fatalf("blocked job=%+v", done)
+	}
+	resumed, err := m.ResumeGoal(job.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resumed.Status != StatusQueued {
+		t.Fatalf("status=%s", resumed.Status)
+	}
+	final := waitJobStatus(t, m, job.ID, StatusDone, 3*time.Second)
+	if !strings.Contains(final.ProgressHint, "完成") {
+		t.Fatalf("hint=%q", final.ProgressHint)
+	}
+	if rounds.Load() < 2 {
+		t.Fatalf("rounds=%d", rounds.Load())
+	}
+}

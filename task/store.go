@@ -37,7 +37,7 @@ type Record struct {
 	Driver        string          `json:"driver"`
 	SessionID     string          `json:"sessionId,omitempty"`
 	Purpose       string          `json:"purpose,omitempty"`
-	JobID         string          `json:"jobId,omitempty"` // 关联 deskqueue.Job；非队列 once:…
+	JobID         string          `json:"jobId,omitempty"` // 关联 job.Job；非队列 once:…
 	Tools         []ToolCall      `json:"tools,omitempty"`
 	Steps         []Step          `json:"steps,omitempty"`
 	Status        string          `json:"status"`

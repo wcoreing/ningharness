@@ -112,7 +112,7 @@ func (h *Harness) Root() string {
 }
 
 // UseProject 登记项目、打开项目迁移，并绑定 Job 到该根。
-// 若 Open 时带了 DataDir，则库落在该目录（OpenProjectAt），避免嵌入方误写入 ~/.agentdesk。
+// 若 Open 时带了 DataDir，则库落在该目录（OpenProjectAt），避免嵌入方误写入家目录默认库。
 func (h *Harness) UseProject(root string) error {
 	if h == nil {
 		return fmt.Errorf("ningharness: nil")
