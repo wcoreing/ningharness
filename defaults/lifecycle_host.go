@@ -69,7 +69,8 @@ func (rt *Runtime) AssembleContext(ctx context.Context, st *lifecycle.RunState) 
 			}
 		}
 	}
-	ff := strings.TrimSpace(st.Feedforward)
+	callerFF := strings.TrimSpace(st.Feedforward)
+	ff := callerFF
 	if rt.Memory != nil {
 		patch, err := rt.Memory.Assemble(ctx, memory.AssembleInput{
 			Root:                root,
@@ -85,10 +86,18 @@ func (rt *Runtime) AssembleContext(ctx context.Context, st *lifecycle.RunState) 
 		ff = memory.MergeFeedforward(ff, patch)
 		st.Feedforward = ff
 	}
-	if st.SkipUserAppend && ff == "" {
-		return nil
-	}
 	prompt := strings.TrimSpace(st.Prompt)
+	// SkipUserAppend：确认续跑 / Job 无正文时不落气泡；仅调用方显式带了 Feedforward 且无 prompt 时落 "(context)" 占位便于检索。
+	if st.SkipUserAppend {
+		if prompt == "" && callerFF == "" {
+			return nil
+		}
+		if prompt == "" {
+			prompt = "(context)"
+		}
+		_, err := rt.Session.Append(root, "", st.SessionKey, "user", prompt, st.TaskID, ff)
+		return err
+	}
 	if prompt == "" && ff == "" {
 		return nil
 	}

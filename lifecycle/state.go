@@ -16,7 +16,8 @@ type RunState struct {
 	// Feedforward 写入 user 行的前馈（进模 WireUser）；空则不写。
 	Feedforward string
 
-	// SkipUserAppend 为 true 时 assemble_context 不落 user 气泡（Job 且无 Feedforward 时常用）。
+	// SkipUserAppend 为 true 时：无调用方 Feedforward 且无 Prompt 则不落 user；
+	// 仅有调用方 Feedforward 时可落 "(context)" 占位（UI 会隐藏）。
 	SkipUserAppend bool
 
 	// Values 步骤间旁路数据（扩展用）。

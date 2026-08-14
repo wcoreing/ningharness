@@ -231,8 +231,12 @@ func scanMsgs(rows *sql.Rows) ([]Msg, error) {
 }
 
 // ContentForUI 去掉项目快照外壳，只留用户可见正文（兼容旧 WrapUser 落盘）。
+// "(context)" 为仅前馈占位，对用户不可见。
 func ContentForUI(content string) string {
 	content = strings.TrimSpace(content)
+	if content == "" || content == "(context)" {
+		return ""
+	}
 	start := strings.Index(content, SnapshotStartMarker)
 	if start < 0 {
 		return content
@@ -245,6 +249,9 @@ func ContentForUI(content string) string {
 	before := strings.TrimSpace(content[:start])
 	after := strings.TrimSpace(content[end:])
 	if after != "" {
+		if after == "(context)" {
+			return ""
+		}
 		return after
 	}
 	if before != "" {
@@ -310,11 +317,11 @@ func TruncateAfterUIKeep(root, sessionKey string, keep int) error {
 	return err
 }
 
-// IsUIRole 是否进入会话 UI（跳过 system/tool/thinking 与仅 tool_calls 的空 assistant）。
+// IsUIRole 是否进入会话 UI（跳过 system/tool/thinking、仅前馈占位 user、与仅 tool_calls 的空 assistant）。
 func IsUIRole(m Msg) bool {
 	switch strings.TrimSpace(m.Role) {
 	case "user":
-		return strings.TrimSpace(m.Content) != ""
+		return ContentForUI(m.Content) != ""
 	case "assistant":
 		return strings.TrimSpace(m.Content) != ""
 	default:

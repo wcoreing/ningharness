@@ -144,6 +144,55 @@ func TestAssembleContextWritesFeedforward(t *testing.T) {
 	}
 }
 
+func TestAssembleContextSkipUserAppendNoCallerFF(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HOME", dir)
+	root := filepath.Join(dir, "proj")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	rt, err := Open(Opts{
+		Opts: ningharness.Opts{
+			DataDir: filepath.Join(dir, "data"),
+			Root:    root,
+		},
+		MCPAddr:     "off",
+		WithoutEino: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rt.Close()
+	rt.SetMemory(stubMemory{patch: "## mem\n- x"})
+	st := &lifecycle.RunState{
+		Root:           root,
+		SessionKey:     "main",
+		TaskID:         "t-skip",
+		Prompt:         "",
+		SkipUserAppend: true,
+	}
+	if err := rt.AssembleContext(t.Context(), st); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(st.Feedforward, "## mem") {
+		t.Fatalf("expected memory feedforward, got %q", st.Feedforward)
+	}
+	f, err := rt.Session.Snapshot(root, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range f.Sessions {
+		if s.ID != "main" {
+			continue
+		}
+		for _, m := range s.Messages {
+			if m.Role == "user" {
+				t.Fatalf("SkipUserAppend+empty prompt must not append user, got %+v", m)
+			}
+		}
+	}
+}
+
 func TestAssembleContextMergesMemoryPatch(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("HOME", dir)
