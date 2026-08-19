@@ -30,6 +30,8 @@ func (h *Gateway) toolListTree(_ context.Context, _ mcp.CallToolRequest) (*mcp.C
 	if err != nil {
 		return toolErr("list_tree", err)
 	}
+	// MCP 回给模型：裁宽目录；UI ListTree 仍走全量
+	listing = workspace.CompactListingForAgent(listing, workspace.AgentTreeMaxChildren)
 	b, _ := json.MarshalIndent(listing, "", "  ")
 	return mcp.NewToolResultText(string(b)), nil
 }

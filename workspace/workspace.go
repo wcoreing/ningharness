@@ -3,14 +3,13 @@ package workspace
 import (
 	"encoding/base64"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 
 	"github.com/wcoreing/ningharness/protocol"
-	
-	
 )
 
 // Project 已打开的本地目录项目。
@@ -180,9 +179,14 @@ func buildNode(root, rel string, isDir bool, depth int, budget *treeBudget) (pro
 	return n, nil
 }
 
-const maxTreeWordBytes = 2 << 20 // 与 ReadText 上限一致，防 ListTree 卡死
+const (
+	maxTreeWordBytes      = 2 << 20 // 与 ReadText 上限一致；更大的文件树不计字
+	maxTreeWordExactBytes = 48 << 10 // 超过则抽样估算，避免打开含大参考库的项目卡死
+	treeWordSampleBytes   = 16 << 10
+)
 
 // fileWordCount 文本稿面字数（docwords，去 MD 壳）；非文本 / 超大 / 含 NUL 返回 0。
+// 大文件（参考料、小说全集）只读样段估算量级，不全文解码——ListTree 热路径。
 func fileWordCount(abs, rel string) int {
 	if IsNonTextRel(rel) {
 		return 0
@@ -191,20 +195,58 @@ func fileWordCount(abs, rel string) int {
 	if err != nil || st.IsDir() || st.Size() > maxTreeWordBytes {
 		return 0
 	}
+	size := st.Size()
+	if size > maxTreeWordExactBytes {
+		return estimateTreeWordCount(abs, size)
+	}
 	b, err := os.ReadFile(abs)
 	if err != nil {
 		return 0
 	}
-	n := len(b)
+	if hasNUL(b, len(b)) {
+		return 0
+	}
+	return Count(DecodeTextBytes(b))
+}
+
+func estimateTreeWordCount(abs string, size int64) int {
+	f, err := os.Open(abs)
+	if err != nil {
+		return 0
+	}
+	defer f.Close()
+	buf := make([]byte, treeWordSampleBytes)
+	n, err := f.Read(buf)
+	if n <= 0 {
+		return 0
+	}
+	if err != nil && err != io.EOF {
+		return 0
+	}
+	sample := buf[:n]
+	if hasNUL(sample, len(sample)) {
+		return 0
+	}
+	words := Count(DecodeTextBytes(sample))
+	if words <= 0 {
+		return 0
+	}
+	return int(int64(words) * size / int64(n))
+}
+
+func hasNUL(b []byte, n int) bool {
+	if n > len(b) {
+		n = len(b)
+	}
 	if n > 8000 {
 		n = 8000
 	}
 	for i := 0; i < n; i++ {
 		if b[i] == 0 {
-			return 0
+			return true
 		}
 	}
-	return Count(string(b))
+	return false
 }
 
 func shouldSkip(name string) bool {
@@ -286,14 +328,14 @@ func (s *Service) ReadText(relPath string) (string, error) {
 	if st.IsDir() {
 		return "", fmt.Errorf("is a directory: %s", relPath)
 	}
-	if st.Size() > 2<<20 {
-		return "", fmt.Errorf("file too large (>2MB): %s", relPath)
+	if st.Size() > 16<<20 {
+		return "", fmt.Errorf("file too large (>16MB): %s", relPath)
 	}
 	b, err := os.ReadFile(abs)
 	if err != nil {
 		return "", err
 	}
-	return string(b), nil
+	return DecodeTextBytes(b), nil
 }
 
 // imageExtMIME Markdown 预览可内嵌的图片类型。

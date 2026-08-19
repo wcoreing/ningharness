@@ -538,6 +538,7 @@ func (s *Service) ImportExternal(absPaths []string, destDir, writeID string) Mut
 			res.Failed[raw] = err.Error()
 			continue
 		}
+		_ = normalizeImportedTree(dstAbs)
 		res.OK = append(res.OK, toRel)
 		touched = append(touched, toRel)
 	}
@@ -595,4 +596,41 @@ func copyDir(src, dst string) error {
 		}
 	}
 	return nil
+}
+
+// normalizeImportedTree 导入后把文本文件转成 UTF-8（GBK 网文等）。
+func normalizeImportedTree(abs string) error {
+	st, err := os.Stat(abs)
+	if err != nil {
+		return err
+	}
+	if !st.IsDir() {
+		return normalizeImportedTextFile(abs)
+	}
+	return filepath.WalkDir(abs, func(path string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		return normalizeImportedTextFile(path)
+	})
+}
+
+func normalizeImportedTextFile(abs string) error {
+	relName := filepath.Base(abs)
+	if IsNonTextRel(relName) {
+		return nil
+	}
+	st, err := os.Stat(abs)
+	if err != nil || st.IsDir() || st.Size() > 32<<20 {
+		return err
+	}
+	b, err := os.ReadFile(abs)
+	if err != nil {
+		return err
+	}
+	if !NeedsUTF8Rewrite(b) {
+		return nil
+	}
+	text := DecodeTextBytes(b)
+	return os.WriteFile(abs, []byte(text), st.Mode().Perm())
 }

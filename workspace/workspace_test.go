@@ -139,3 +139,31 @@ func TestTreeListsDeep(t *testing.T) {
 		t.Fatalf("want x.md, got %+v", cur.Children)
 	}
 }
+
+func TestFileWordCountLargeUsesEstimate(t *testing.T) {
+	root := t.TempDir()
+	// >48KB 走抽样；重复汉字保证 Count 非零
+	chunk := strings.Repeat("江湖一刀。", 2000) // ~10KB UTF-8
+	body := strings.Repeat(chunk, 8)           // ~80KB
+	path := filepath.Join(root, "big.txt")
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got := fileWordCount(path, "big.txt")
+	exact := Count(body)
+	if got <= 0 {
+		t.Fatalf("estimate empty")
+	}
+	// 抽样缩放允许误差；不应差一个数量级
+	if got < exact/2 || got > exact*2 {
+		t.Fatalf("estimate=%d exact=%d", got, exact)
+	}
+	small := filepath.Join(root, "small.md")
+	if err := os.WriteFile(small, []byte("# 小章\n正文甲乙丙"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if fileWordCount(small, "small.md") != Count("# 小章\n正文甲乙丙") {
+		t.Fatalf("small should stay exact")
+	}
+}
+

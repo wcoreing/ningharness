@@ -22,6 +22,8 @@ const (
 	KindToolCall   = "tool_call"
 	KindToolResult = "tool_result"
 	KindDiff       = "diff"
+	// KindUserImage 用户粘贴/上传的图片（body=base64，rel_path=mime）。
+	KindUserImage = "user_image"
 )
 
 // PutInput 写入一项外置资源。
