@@ -69,6 +69,7 @@ func (rt *Runtime) AssembleContext(ctx context.Context, st *lifecycle.RunState) 
 			}
 		}
 	}
+	lessonIDs := skill.FilterLessonInjectIDs(skillIDs)
 	callerFF := strings.TrimSpace(st.Feedforward)
 	ff := callerFF
 	if rt.Memory != nil {
@@ -78,14 +79,17 @@ func (rt *Runtime) AssembleContext(ctx context.Context, st *lifecycle.RunState) 
 			TaskID:              st.TaskID,
 			Prompt:              st.Prompt,
 			ExistingFeedforward: ff,
-			SkillIDs:            skillIDs,
+			SkillIDs:            lessonIDs,
 		})
 		if err != nil {
 			return err
 		}
 		ff = memory.MergeFeedforward(ff, patch)
-		st.Feedforward = ff
 	}
+	if hint := skill.MountBrief(root, skillIDs); hint != "" {
+		ff = memory.MergeFeedforward(ff, hint)
+	}
+	st.Feedforward = ff
 	prompt := strings.TrimSpace(st.Prompt)
 	// SkipUserAppend：确认续跑 / Job 无正文时不落气泡；仅调用方显式带了 Feedforward 且无 prompt 时落 "(context)" 占位便于检索。
 	if st.SkipUserAppend {
