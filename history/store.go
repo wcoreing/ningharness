@@ -84,9 +84,10 @@ func EnsureSystem(root, sessionKey, systemText string) error {
 		pid, sessionKey).Scan(&id)
 	now := time.Now().UnixMilli()
 	if err == sql.ErrNoRows {
-		return insertMsg(db, pid, sessionKey, Msg{
+		_, err = insertMsg(db, pid, sessionKey, Msg{
 			Role: "system", Content: systemText, CreatedAtMs: now,
 		})
+		return err
 	}
 	if err != nil {
 		return err
@@ -97,18 +98,24 @@ func EnsureSystem(root, sessionKey, systemText string) error {
 
 // Append 追加一行，自动分配 seq。
 func Append(root, sessionKey string, m Msg) error {
+	_, err := AppendSeq(root, sessionKey, m)
+	return err
+}
+
+// AppendSeq 追加一行并返回分配的 seq。
+func AppendSeq(root, sessionKey string, m Msg) (int, error) {
 	root = strings.TrimSpace(root)
 	sessionKey = strings.TrimSpace(sessionKey)
 	if root == "" || sessionKey == "" {
-		return fmt.Errorf("history: Append requires root, sessionKey")
+		return 0, fmt.Errorf("history: Append requires root, sessionKey")
 	}
 	role := strings.TrimSpace(m.Role)
 	if role == "" {
-		return fmt.Errorf("history: role required")
+		return 0, fmt.Errorf("history: role required")
 	}
 	db, pid, err := openDB(root)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	if m.CreatedAtMs == 0 {
 		m.CreatedAtMs = time.Now().UnixMilli()
@@ -149,16 +156,16 @@ func AppendThinking(root, sessionKey, taskID, text string) error {
 	})
 }
 
-func insertMsg(db *sql.DB, pid, sessionKey string, m Msg) error {
+func insertMsg(db *sql.DB, pid, sessionKey string, m Msg) (int, error) {
 	tx, err := db.Begin()
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer func() { _ = tx.Rollback() }()
 
 	var maxSeq sql.NullInt64
 	if err := tx.QueryRow(store.R(`SELECT MAX(seq) FROM history_message WHERE project_id=? AND session_key=?`), pid, sessionKey).Scan(&maxSeq); err != nil {
-		return err
+		return 0, err
 	}
 	seq := 1
 	if maxSeq.Valid {
@@ -173,9 +180,12 @@ func insertMsg(db *sql.DB, pid, sessionKey string, m Msg) error {
 		pid, sessionKey, seq, m.Role, m.Content, ff, strings.TrimSpace(m.ToolCallID), strings.TrimSpace(m.ToolCallsJSON),
 		strings.TrimSpace(m.ResourceIDsJSON), strings.TrimSpace(m.TaskID), m.CreatedAtMs)
 	if err != nil {
-		return err
+		return 0, err
 	}
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+	return seq, nil
 }
 
 // Load 全序加载。
@@ -317,13 +327,17 @@ func TruncateAfterUIKeep(root, sessionKey string, keep int) error {
 	return err
 }
 
-// IsUIRole 是否进入会话 UI（跳过 system/tool/thinking、仅前馈占位 user、与仅 tool_calls 的空 assistant）。
+// IsUIRole 是否进入会话 UI（跳过 system/tool/thinking、仅前馈占位 user）。
+// 带 tool_calls 的 assistant 仍显示正文；工具在 UI 侧折叠呈现（对齐 Cursor / AgentDesk）。
 func IsUIRole(m Msg) bool {
 	switch strings.TrimSpace(m.Role) {
 	case "user":
 		return ContentForUI(m.Content) != ""
 	case "assistant":
-		return strings.TrimSpace(m.Content) != ""
+		if strings.TrimSpace(m.Content) != "" {
+			return true
+		}
+		return strings.TrimSpace(m.ToolCallsJSON) != ""
 	default:
 		return false
 	}

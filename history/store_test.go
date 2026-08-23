@@ -106,6 +106,21 @@ func TestAppendLoadByTaskAndStripSnapshot(t *testing.T) {
 	}
 }
 
+func TestIsUIRoleShowsAssistantWithToolCalls(t *testing.T) {
+	if !IsUIRole(Msg{Role: "assistant", Content: "旁白", ToolCallsJSON: `[{"id":"a"}]`}) {
+		t.Fatal("tool_calls assistant with content should show")
+	}
+	if !IsUIRole(Msg{Role: "assistant", Content: "", ToolCallsJSON: `[{"id":"a"}]`}) {
+		t.Fatal("tools-only assistant should show (collapsed tools)")
+	}
+	if !IsUIRole(Msg{Role: "assistant", Content: "最终回复"}) {
+		t.Fatal("final assistant should show")
+	}
+	if IsUIRole(Msg{Role: "assistant", Content: "", ToolCallsJSON: ""}) {
+		t.Fatal("empty assistant should hide")
+	}
+}
+
 func TestRepairChainDropsPartialToolsWhenStripping(t *testing.T) {
 	in := []Msg{
 		{Role: "user", Content: "删"},
