@@ -519,9 +519,18 @@ func stripUnfulfilledToolCalls(msgs []Msg) []Msg {
 			if !toolResultsFollow(msgs, i+1, needed) {
 				m.ToolCallsJSON = ""
 				if strings.TrimSpace(m.Content) == "" {
-					// 空 assistant+残缺 tool_calls：丢掉，避免污染
+					// 空 assistant+残缺 tool_calls：丢掉，并跳过紧随的残缺 tool，避免孤儿 tool
+					for i+1 < len(msgs) && msgs[i+1].Role == "tool" {
+						i++
+					}
 					continue
 				}
+				out = append(out, m)
+				// 有正文但 tool_calls 残缺：丢掉随后 tool，防止「无 tool_calls 的 assistant + tool」进模
+				for i+1 < len(msgs) && msgs[i+1].Role == "tool" {
+					i++
+				}
+				continue
 			}
 		}
 		out = append(out, m)

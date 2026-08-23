@@ -106,6 +106,39 @@ func TestAppendLoadByTaskAndStripSnapshot(t *testing.T) {
 	}
 }
 
+func TestRepairChainDropsPartialToolsWhenStripping(t *testing.T) {
+	in := []Msg{
+		{Role: "user", Content: "删"},
+		{
+			Role: "assistant", Content: "开始删",
+			ToolCallsJSON: EncodeToolCalls([]ToolCallSpec{
+				{ID: "a", Name: "remove_container", Arguments: "{}"},
+				{ID: "b", Name: "remove_container", Arguments: "{}"},
+			}),
+		},
+		{Role: "tool", ToolCallID: "a", Content: "ok"},
+		// 缺 b
+	}
+	out := RepairChain(in)
+	for _, m := range out {
+		if m.Role == "tool" {
+			t.Fatalf("orphan tool kept after strip: %+v", out)
+		}
+		if m.Role == "assistant" && strings.Contains(m.ToolCallsJSON, `"a"`) {
+			t.Fatalf("incomplete tool_calls kept: %+v", out)
+		}
+	}
+	var sawAsst bool
+	for _, m := range out {
+		if m.Role == "assistant" && m.Content == "开始删" {
+			sawAsst = true
+		}
+	}
+	if !sawAsst {
+		t.Fatalf("assistant content dropped: %+v", out)
+	}
+}
+
 func TestRepairChainDropsOrphanToolCalls(t *testing.T) {
 	in := []Msg{
 		{Role: "user", Content: "写"},
