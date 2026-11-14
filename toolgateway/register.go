@@ -186,6 +186,41 @@ func RegisterCoreTools(s *server.MCPServer, h *Gateway) {
 		mcp.WithString("session", mcp.Description("空/active=侧栏当前会话（可见）；isolated=隐藏 once:queue")),
 	), h.toolEnqueueAgentTurn)
 
+	s.AddTool(mcp.NewTool("spawn_agent",
+		mcp.WithDescription("派生子代理（独立会话+SpawnPacket）。默认不共享父对话；传 goal+context+artifacts。回传 handle；结果用 get_spawn/list_spawns。叶子子代理禁再 spawn。"),
+		mcp.WithString("goal", mcp.Required(), mcp.Description("子任务目标（须自洽）")),
+		mcp.WithString("context", mcp.Description("显式背景：路径/报错/约束；勿假设子代理见过父对话")),
+		mcp.WithString("artifacts", mcp.Description("逗号分隔相对路径，子代理应先读")),
+		mcp.WithString("role", mcp.Description("leaf（默认）|orchestrator")),
+		mcp.WithString("title", mcp.Description("列表标题")),
+		mcp.WithNumber("max_depth", mcp.Description("最大委派深度，默认 1")),
+		mcp.WithString("driver", mcp.Description("驱动，空=默认")),
+		mcp.WithString("model", mcp.Description("模型，空=默认")),
+	), h.toolSpawnAgent)
+
+	s.AddTool(mcp.NewTool("list_spawns",
+		mcp.WithDescription("列出子代理登记（默认当前会话派出的）。"),
+		mcp.WithString("parent_session", mcp.Description("过滤父会话；空且 mine≠false=当前会话")),
+		mcp.WithString("mine", mcp.Description("true（默认）按当前会话过滤；false=全部")),
+		mcp.WithNumber("limit", mcp.Description("默认 30")),
+	), h.toolListSpawns)
+
+	s.AddTool(mcp.NewTool("get_spawn",
+		mcp.WithDescription("读子代理状态与 ResultBrief（summary）。"),
+		mcp.WithString("spawn_id", mcp.Required(), mcp.Description("spawn/job id")),
+	), h.toolGetSpawn)
+
+	s.AddTool(mcp.NewTool("steer_spawn",
+		mcp.WithDescription("向子代理插话（steer）；不取消；下一轮边界注入。"),
+		mcp.WithString("spawn_id", mcp.Required(), mcp.Description("spawn/job id")),
+		mcp.WithString("message", mcp.Required(), mcp.Description("插话正文")),
+	), h.toolSteerSpawn)
+
+	s.AddTool(mcp.NewTool("stop_spawn",
+		mcp.WithDescription("停止子代理（取消队列 Job）。"),
+		mcp.WithString("spawn_id", mcp.Required(), mcp.Description("spawn/job id")),
+	), h.toolStopSpawn)
+
 	s.AddTool(mcp.NewTool("enqueue_goal",
 		mcp.WithDescription("入队 Goal 外环（type=goal）：反复跑直到 `.ningharness/goals/<id>/GOAL.yaml` status=complete|blocked 或超 max_rounds。步数未知时用；路径已知用 enqueue_agent_turns_for_paths。回执=已入队未落盘。"),
 		mcp.WithString("objective", mcp.Required(), mcp.Description("目标陈述（正典；勿缩水）")),

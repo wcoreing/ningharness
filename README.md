@@ -59,6 +59,7 @@ Each Chat / Job run follows **`lifecycle`**. Phase boundaries use the **Bus** (`
 | **Task** | One execution record (Store) |
 | **Job** | Queue unit (schedules when to run a Lifecycle; may span tasks) |
 | **Goal** | Outer-loop Job: re-trigger Lifecycle until `GOAL.yaml` status is terminal |
+| **Spawn** | Subagent: fresh Session + `SpawnPacket`; registry `SPAWN.yaml`; parent manages via spawn_agent/list/steer/stop; no parent transcript by default |
 | **Trace** | Append-only JSONL under `.ningharness/traces/` per Task; resume = paired tool_call/tool_result + task_end |
 
 ## Packages (by layer)

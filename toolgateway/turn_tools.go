@@ -29,6 +29,11 @@ var coreToolDescriptions = map[string]string{
 	"get_task_summary":       "任务摘要",
 	"get_task_trace":         "任务 Trace",
 	"enqueue_agent_turn":     "入队一轮 Agent",
+	"spawn_agent":            "派生子代理",
+	"list_spawns":            "列出子代理",
+	"get_spawn":              "子代理状态/摘要",
+	"steer_spawn":            "向子代理插话",
+	"stop_spawn":             "停止子代理",
 	"list_queue":             "列出队列",
 	"cancel_queue_task":      "取消队列任务",
 }

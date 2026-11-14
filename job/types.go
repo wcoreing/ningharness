@@ -30,6 +30,26 @@ const JobTypeAgentTurn = "agent-turn"
 // JobTypeGoal 外环：反复跑 Executor，直到 GOAL.yaml status 终态或超轮。
 const JobTypeGoal = "goal"
 
+// JobTypeSpawn 子代理：独立 Session + SpawnPacket 前馈；Registry 在 .ningharness/spawns/。
+const JobTypeSpawn = "spawn"
+
+// SpawnEnqueue EnqueueSpawn 入参。
+type SpawnEnqueue struct {
+	Goal          string
+	Context       string
+	Artifacts     []string
+	ParentSession string
+	ParentTask    string
+	ParentJob     string
+	ParentDepth   int
+	Role          string // leaf|orchestrator
+	Title         string
+	Driver        string
+	Model         string
+	MaxDepth      int
+	FeedExtra     string // 额外前馈（拼在 Packet 后）
+}
+
 // DefaultGoalMaxRounds Goal 外环默认硬上限。
 const DefaultGoalMaxRounds = 100
 

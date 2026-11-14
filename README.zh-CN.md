@@ -61,6 +61,7 @@
 | **Task** | 一次执行记录（Store） |
 | **Job** | 队列单元（调度何时跑 Lifecycle；可跨多个 Task） |
 | **Goal** | 外环 Job：反复触发 Lifecycle 直到 `GOAL.yaml` status 终态 |
+| **Spawn** | 子代理：独立 Session + `SpawnPacket`（goal/context/artifacts）；Registry=`SPAWN.yaml`；父用 spawn_agent/list/steer/stop 管理；默认不共享父对话 |
 | **Trace** | Task 级 append-only JSONL（`.ningharness/traces/`）；恢复=已配对 tool_call/tool_result + task_end |
 
 ## 模块（按层）

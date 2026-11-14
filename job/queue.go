@@ -524,6 +524,9 @@ func (m *Manager) runOne(ctx context.Context, job Job) {
 		m.runGoal(ctx, job)
 		return
 	}
+	if job.Type == JobTypeSpawn {
+		_ = spawnMarkRunning(m.root, job.ID)
+	}
 	if len(job.Steps) > 0 {
 		m.runSteps(ctx, job)
 		return
@@ -575,5 +578,8 @@ func (m *Manager) runOne(ctx context.Context, job Job) {
 	m.mu.Unlock()
 	if kind != "" {
 		m.fireProgress(done, kind)
+	}
+	if done.Type == JobTypeSpawn {
+		spawnSyncFinish(m.root, done)
 	}
 }

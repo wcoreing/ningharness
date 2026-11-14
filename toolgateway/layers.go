@@ -48,6 +48,11 @@ var coreToolLayers = map[string]ToolLayer{
 	"get_task_summary":              LayerControl,
 	"get_task_trace":                LayerControl,
 	"enqueue_agent_turn":            LayerControl,
+	"spawn_agent":                   LayerControl,
+	"list_spawns":                   LayerControl,
+	"get_spawn":                     LayerControl,
+	"steer_spawn":                   LayerControl,
+	"stop_spawn":                    LayerControl,
 	"enqueue_goal":                  LayerControl,
 	"resume_goal":                   LayerControl,
 	"get_goal_status":               LayerControl,
@@ -98,13 +103,20 @@ func (h *Gateway) ArmLayers(purpose string, layers ...ToolLayer) {
 	h.ArmTurnInterceptor(purpose, AllowLayers(layers...))
 }
 
-// ArmPurpose 按常见 purpose 武装：ask|reflect → 收窄；空/agent/其它 → 不限制（nil）。
+// ArmPurpose 按常见 purpose 武装：ask|reflect → 收窄；spawn_leaf 禁再 spawn；空/agent/其它 → 不限制（nil）。
 func (h *Gateway) ArmPurpose(purpose string) {
 	switch strings.TrimSpace(purpose) {
 	case "ask":
 		h.ArmTurnInterceptor("ask", AllowAsk())
 	case "reflect":
 		h.ArmTurnInterceptor("reflect", AllowReflect())
+	case "spawn_leaf":
+		allow := AllowAgent()
+		delete(allow, "spawn_agent")
+		delete(allow, "enqueue_goal")
+		delete(allow, "enqueue_agent_turn")
+		delete(allow, "enqueue_agent_turns_for_paths")
+		h.ArmTurnInterceptor("spawn_leaf", allow)
 	default:
 		h.ArmTurnInterceptor(strings.TrimSpace(purpose), nil)
 	}

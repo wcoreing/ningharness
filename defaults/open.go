@@ -18,6 +18,7 @@ import (
 	"github.com/wcoreing/ningharness/lifecycle"
 	"github.com/wcoreing/ningharness/memory"
 	"github.com/wcoreing/ningharness/skill"
+	"github.com/wcoreing/ningharness/spawn"
 	"github.com/wcoreing/ningharness/toolgateway"
 	"github.com/wcoreing/ningharness/workspace"
 
@@ -166,6 +167,11 @@ func (rt *Runtime) bindJobExecutor() {
 		if prompt == "" {
 			prompt = strings.TrimSpace(j.Prompt)
 		}
+		if steer := rt.Job.TakeSteerPending(j.ID); steer != "" {
+			if block := job.FormatSteerBlock(steer); block != "" {
+				prompt = prompt + "\n\n" + block
+			}
+		}
 		taskID := taskIDForJob(j)
 		sess := strings.TrimSpace(j.SessionKey)
 		st := &lifecycle.RunState{
@@ -180,8 +186,34 @@ func (rt *Runtime) bindJobExecutor() {
 		if p := strings.TrimSpace(j.Purpose); p != "" {
 			st.Set("purpose", p)
 		}
-		if err := rt.runLifecycle(ctx, st); err != nil {
-			return "", err
+		if d := spawn.IDFromSession(sess); d != "" {
+			st.Set("spawn.depth", 1) // 具体深度以 SPAWN.yaml 为准；Values 供工具闸
+			if rec, err := spawn.Get(rt.Root(), d); err == nil {
+				st.Set("spawn.depth", rec.Depth)
+				st.Set("spawn.maxDepth", rec.MaxDepth)
+			}
+		}
+		runErr := rt.runLifecycle(ctx, st)
+		if j.Type == job.JobTypeSpawn || spawn.IsSpawnSession(sess) {
+			id := j.ID
+			if sid := spawn.IDFromSession(sess); sid != "" {
+				id = sid
+			}
+			status := spawn.StatusDone
+			errMsg := ""
+			if runErr != nil {
+				if ctx.Err() != nil {
+					status = spawn.StatusCancelled
+					errMsg = "cancelled"
+				} else {
+					status = spawn.StatusError
+					errMsg = runErr.Error()
+				}
+			}
+			_ = spawn.Complete(rt.Root(), id, status, strings.TrimSpace(st.Reply), errMsg)
+		}
+		if runErr != nil {
+			return "", runErr
 		}
 		return taskID, nil
 	})

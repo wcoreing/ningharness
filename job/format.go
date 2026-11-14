@@ -28,6 +28,11 @@ func FormatEnqueueOK(job Job) string {
 		msg += " · 改 `.ningharness/goals/<id>/GOAL.yaml` 的 status=complete|blocked 结束外环；list_queue 看进度"
 		return msg
 	}
+	if strings.TrimSpace(job.Type) == JobTypeSpawn {
+		msg += " · type=spawn · session=`" + strings.TrimSpace(job.SessionKey) + "`"
+		msg += " · 登记 `.ningharness/spawns/<id>/SPAWN.yaml`；list_spawns / get_spawn 看进度与摘要；勿期望共享父对话"
+		return msg
+	}
 	if rel := strings.TrimSpace(job.TargetRel); rel != "" {
 		msg += " · target=`" + rel + "`（执行时注入「本轮只写」）"
 	}
