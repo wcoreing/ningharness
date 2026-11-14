@@ -1,7 +1,7 @@
 package store
 
 // CurrentSchemaVersion 当前统一库版本；升级走 numbered migrations。
-const CurrentSchemaVersion = 25
+const CurrentSchemaVersion = 26
 
 // unifiedSchemaSQL 全新库：jobs=队列，tasks=执行台账；对话 SSOT=history_message；正文外置=resource。
 const unifiedSchemaSQL = `
@@ -151,23 +151,4 @@ CREATE INDEX IF NOT EXISTS idx_resource_call ON resource(project_id, tool_call_i
 CREATE INDEX IF NOT EXISTS idx_resource_path ON resource(project_id, rel_path);
 CREATE INDEX IF NOT EXISTS idx_resource_kind ON resource(project_id, kind);
 
-CREATE TABLE IF NOT EXISTS lesson_entry (
-  id TEXT NOT NULL,
-  project_id TEXT NOT NULL,
-  scope TEXT NOT NULL DEFAULT 'skill',
-  anchors TEXT NOT NULL DEFAULT '{}',
-  body TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'active',
-  source_task_id TEXT NOT NULL DEFAULT '',
-  parent_task_id TEXT NOT NULL DEFAULT '',
-  source_session_key TEXT NOT NULL DEFAULT '',
-  supersedes_id TEXT NOT NULL DEFAULT '',
-  acked_at_ms INTEGER NOT NULL DEFAULT 0,
-  created_at_ms INTEGER NOT NULL,
-  updated_at_ms INTEGER NOT NULL DEFAULT 0,
-  PRIMARY KEY (project_id, id)
-);
-CREATE INDEX IF NOT EXISTS idx_lesson_scope_status ON lesson_entry(project_id, scope, status);
-CREATE INDEX IF NOT EXISTS idx_lesson_anchors_skill ON lesson_entry(project_id, json_extract(anchors, '$.skillId'), status);
-CREATE INDEX IF NOT EXISTS idx_lesson_source_task ON lesson_entry(project_id, source_task_id);
 `

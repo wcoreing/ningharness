@@ -370,6 +370,7 @@ func wipeIncompatible(db *sql.DB) error {
 		`DROP TABLE IF EXISTS pin_sessions`,
 		`DROP TABLE IF EXISTS review_sessions`,
 		`DROP TABLE IF EXISTS growth_reflect`,
+		`DROP TABLE IF EXISTS lesson_entry`,
 		`DROP TABLE IF EXISTS meta`,
 		`DROP TABLE IF EXISTS projects`,
 	}

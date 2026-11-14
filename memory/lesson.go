@@ -34,7 +34,7 @@ func (m *Lesson) Assemble(ctx context.Context, in AssembleInput) (string, error)
 	return lesson.InjectBrief(root, in.SkillIDs, max), nil
 }
 
-// Ingest 默认 no-op（候选沉淀由客户端或后续实现）。
+// Ingest 默认 no-op；回合学习请走 learning.Learner / Lifecycle learn 步。
 func (m *Lesson) Ingest(ctx context.Context, in IngestInput) error {
 	_ = ctx
 	_ = in

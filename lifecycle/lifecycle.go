@@ -17,8 +17,11 @@ const (
 	StepBeginTask StepID = "begin_task"
 	// StepAssembleContext 宿主侧输入面（默认落 user；可 Gate 加厚 feedforward 等）。
 	StepAssembleContext StepID = "assemble_context"
-	StepRunGuest        StepID = "run_guest"
-	StepPersistTurn     StepID = "persist_turn"
+	// StepRunGuest 思考步（本地 Guest 或外置 External；由 Values[think] 分支，步骤 id 稳定）。
+	StepRunGuest    StepID = "run_guest"
+	StepPersistTurn StepID = "persist_turn"
+	// StepLearn 回合后自学习：Evidence→Candidate→Policy→Commit(MD)。
+	StepLearn StepID = "learn"
 	// StepEndTask Bus 钩子点；投影/Trace 收尾在 RunState.OnExit→FinishTurn。
 	StepEndTask StepID = "end_task"
 )
@@ -167,10 +170,11 @@ type Host interface {
 	AssembleContext(ctx context.Context, st *RunState) error
 	RunGuest(ctx context.Context, st *RunState) error
 	PersistTurn(ctx context.Context, st *RunState) error
+	Learn(ctx context.Context, st *RunState) error
 	EndTask(ctx context.Context, st *RunState) error
 }
 
-// NewDefault 返回默认生命周期（begin_task → … → end_task），Run 绑定到 Host。
+// NewDefault 返回默认生命周期（begin_task → … → learn → end_task），Run 绑定到 Host。
 func NewDefault(h Host) *Lifecycle {
 	if h == nil {
 		return New()
@@ -180,6 +184,7 @@ func NewDefault(h Host) *Lifecycle {
 		Step{ID: StepAssembleContext, Run: h.AssembleContext},
 		Step{ID: StepRunGuest, Run: h.RunGuest},
 		Step{ID: StepPersistTurn, Run: h.PersistTurn},
+		Step{ID: StepLearn, Run: h.Learn},
 		Step{ID: StepEndTask, Run: h.EndTask},
 	)
 }

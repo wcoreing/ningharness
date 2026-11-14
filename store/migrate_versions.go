@@ -35,6 +35,13 @@ var schemaMigrations = map[int]migrateFn{
 	23: migrateToV23,
 	24: migrateToV24,
 	25: migrateToV25,
+	26: migrateToV26,
+}
+
+// migrateToV26：经验 SSOT 迁 Markdown；删除 lesson_entry。
+func migrateToV26(tx *sql.Tx) error {
+	_, err := tx.Exec(`DROP TABLE IF EXISTS lesson_entry`)
+	return err
 }
 
 func migrateToV25(tx *sql.Tx) error {

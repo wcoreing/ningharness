@@ -31,6 +31,7 @@ type Gateway struct {
 
 	// --- 工具 Registry（CallNamedTool / Invoke；MCP 另绑 schema）---
 	handlers       map[string]ToolHandler
+	toolInfo       map[string]ToolInfo // 可选展示元数据（TurnToolInfos）
 	coreRegistered bool
 
 	// --- 当前轮投影 + 授权策略（随 lifecycle 生灭）---

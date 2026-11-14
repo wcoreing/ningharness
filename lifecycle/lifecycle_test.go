@@ -152,6 +152,10 @@ func (h fakeHost) PersistTurn(ctx context.Context, st *RunState) error {
 	*h.log = append(*h.log, "persist")
 	return nil
 }
+func (h fakeHost) Learn(ctx context.Context, st *RunState) error {
+	*h.log = append(*h.log, "learn")
+	return nil
+}
 func (h fakeHost) EndTask(ctx context.Context, st *RunState) error {
 	*h.log = append(*h.log, "end")
 	return nil
@@ -164,7 +168,7 @@ func TestNewDefaultOrder(t *testing.T) {
 	if err := (Runner{}).Run(context.Background(), wf, st); err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"begin", "assemble", "guest", "persist", "end"}
+	want := []string{"begin", "assemble", "guest", "persist", "learn", "end"}
 	if len(log) != len(want) {
 		t.Fatalf("log=%v", log)
 	}

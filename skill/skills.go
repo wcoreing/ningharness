@@ -1,5 +1,5 @@
 // Package skill 项目级 Skill 磁盘契约与 Slot 插槽：system/skills/<id>/SKILL.md。
-// 经验 SSOT 在 Store lesson_entry（库导出载体仍可写 LESSONS.md）。不含内置 packs 正文。
+// 经验 SSOT 在 LESSONS.md（Markdown）；方法包正文为 SKILL.md。不含内置 packs 正文。
 package skill
 
 import (
@@ -158,7 +158,7 @@ func fmEnabled(p *bool) bool {
 	return *p
 }
 
-// LoadBody 读 SKILL.md 正文（经验在 lesson_entry，由 get_skill / InjectBrief 另附）。
+// LoadBody 读 SKILL.md 正文（经验在 LESSONS.md，由 get_skill / InjectBrief 另附）。
 func LoadBody(projectRoot, matched string) (info Info, body string, err error) {
 	info, skillPath, err := resolve(projectRoot, matched)
 	if err != nil {

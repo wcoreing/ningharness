@@ -30,7 +30,7 @@
         ▼
 【ningharness 内核】
    Workspace · Store · Gateway · Lifecycle · RunState
-   可换插槽：Guest · Memory · Skill
+   可换插槽：Guest · External · Memory · Skill
 ```
 
 - **客户端**：调用方；不在本库内实现 UI。  
@@ -43,7 +43,7 @@
 |------|------|
 | **客户端 Client** | 调用方：嵌入或调用本库的一方 |
 | **Harness** | 门面：Store + Session + Job |
-| **Store** | 框架内持久状态（含 session / history / task / job / resource / lesson 等） |
+| **Store** | 框架内**结构化**持久状态（session / history / task / job / resource…）；经验正文不进库 |
 | **Workspace** | 项目文件世界（相对根路径） |
 | **Lifecycle** | 一次 Task / 一轮 Chat 的固定阶段管道（步骤 + Bus） |
 | **Bus / Event** | 生命周期事件：`Phase × before\|after`；`On` 可 Block，`Watch` 只观察 |
@@ -51,10 +51,13 @@
 | **前馈 Feedforward** | `RunState` 上进模附加上下文；`assemble` 落 user 时带上 |
 | **Step** | 生命周期领域原子（如 `begin_task`、`run_guest`）；**不是**工具名 |
 | **Gateway** | 工具网关 + MCP 核（注册 / 授权 / 调用）；副作用唯一入口 |
-| **Guest** | 模型循环插槽：`Run(Input{Message,Feedforward})`；默认 Eino；`guest.Chat` 为无前馈糖 |
-| **Memory** | 记忆插槽：`assemble` 贡献前馈；可选 `Ingester`（`FileIngest` 写 JSONL）；默认 `memory.Lesson`；`NewLessonWithFileIngest` 组合 |
-| **Skill** | 方法包插槽：`List` / `Match` / `Load`；默认 `skill.Disk`；`SetSkill` / `WithoutSkill` |
-| **Lesson** | Store 中的经验条目；写入即默认可用（进前馈）；ack_lesson 用于历史未认账或再次确认 |
+| **Guest** | 本地模型循环插槽：`Run(Input{Message,Feedforward})`；默认 Eino |
+| **External** | 外置大脑插槽（Cursor/Pi/dsh…）：`RunTurn` + 事件流；工具经宿主 `guest.Tools`→Gateway。Lifecycle 步骤仍为 `run_guest`，由 `Values[think]=external` 分支 |
+| **TurnTools** | Gateway 本轮可见工具名/元数据（`TurnToolNames` / `ArmTurnTools`），供 External 裁剪 |
+| **Memory** | Recall 插槽：`assemble` 读 Lesson MD 贡献前馈；默认 `memory.Lesson` |
+| **Learning** | 自学习：`Evidence → Candidate(JSONL) → Policy → Commit(MD)`；Lifecycle `learn` 步；默认 NoopPolicy |
+| **Skill** | 方法包插槽：`List` / `Match` / `Load`；默认 `skill.Disk`；`SKILL.md` 不被 Learn 改写 |
+| **Lesson** | 经验 **Markdown SSOT**：project=`MEMORY.md`、personal=`USER.md`、skill=`LESSONS.md`；写入即默认可用 |
 | **Task** | 一次执行记录（Store） |
 | **Job** | 队列单元（调度何时跑 Lifecycle；可跨多个 Task） |
 | **Goal** | 外环 Job：反复触发 Lifecycle 直到 `GOAL.yaml` status 终态 |
@@ -69,20 +72,23 @@ ningharness/           门面 Open/Close/UseProject
   workspace/ protocol/ 文件世界 / 跨包 DTO
   store/ session/ history/ resource/   Store
   task/ job/ goal/ trace/
-  skill/ lesson/       Skill Slot + Lesson（Store）
-  memory/              Memory 插槽（Assemble + 可选 Ingest）
+  skill/ lesson/       Skill Slot + Lesson（MD SSOT）
+  memory/ learning/    Recall（Assemble）+ 自学习（Candidate/Policy/Commit）
   guest/ (+ eino/)     Guest 插槽（Run）
-  defaults/            装配（Lifecycle Host + Gateway 投影 + MCP + Eino + Memory + Skill）
+  defaults/            装配（Lifecycle Host + Gateway 投影 + MCP + Eino + Memory + Learner + Skill）
   examples/            示例客户端
 ```
 
-依赖方向：`defaults` → lifecycle / toolgateway / guest / memory / skill；`lifecycle` 不 import `toolgateway`（Host 反向注入）。
+依赖方向：`defaults` → lifecycle / toolgateway / guest / memory / learning / skill；`lifecycle` 不 import `toolgateway`（Host 反向注入）。
+
+存储原则：**DB 只存结构化运行态**；经验/方法/画像等人类可读内容一律 **Markdown**；未权威候选为 JSONL（非 DB）。
 
 一轮投影：`begin_task` → `Gateway.ProjectTurn`；收尾唯一入口 `OnExit` → `FinishTurn`（`end_task` 只作 Bus 钩子）。  
 `runLifecycle` 可为 Host 步骤 `WithRunState`；**Guest 不感知 RunState**——工具侧本轮身份只认 Gateway 投影。  
-`assemble_context`：`skill.paths` 匹配补 skill id → 调用方前馈 + **Memory.Assemble** → `RunState.Feedforward` → 落 user。  
+`assemble_context`：`skill.paths` 匹配补 skill id → 调用方前馈 + **Memory.Assemble**（读 MD）→ `RunState.Feedforward` → 落 user。  
 `run_guest`：`Guest.Run`（`guest.Wire` 合并前馈进模）。  
-`persist_turn`：落 assistant；若 Memory 实现 **Ingester** 则 `Ingest`。  
+`persist_turn`：落 assistant + DrainToolErrors。  
+`learn`：Evidence → Candidate → Policy → 可选 MD Commit（默认 Noop）。  
 工具分发：`RegisterHandler` / 核工具 `ensureCoreHandlers`；客户端扩展不必改 `CallNamedTool`。
 
 ## 快速开始

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/wcoreing/ningharness/guest"
+	"github.com/wcoreing/ningharness/learning"
 	"github.com/wcoreing/ningharness/lifecycle"
 	"github.com/wcoreing/ningharness/memory"
 	"github.com/wcoreing/ningharness/skill"
@@ -113,10 +114,13 @@ func (rt *Runtime) AssembleContext(ctx context.Context, st *lifecycle.RunState) 
 	return err
 }
 
-// RunGuest 调用 Guest.Run（前馈经 guest.Wire 进模）。
+// RunGuest 思考步：按 Values[think] 走本地 Guest 或外置 External（同一步骤，同一 Lifecycle）。
 func (rt *Runtime) RunGuest(ctx context.Context, st *lifecycle.RunState) error {
 	if rt == nil || st == nil {
 		return fmt.Errorf("defaults: nil runtime/state")
+	}
+	if guest.ThinkMode(st.Values) == guest.ThinkExternal {
+		return rt.runExternal(ctx, st)
 	}
 	if rt.Guest == nil {
 		return fmt.Errorf("defaults: no Guest")
@@ -132,8 +136,34 @@ func (rt *Runtime) RunGuest(ctx context.Context, st *lifecycle.RunState) error {
 	return nil
 }
 
-// PersistTurn 落 assistant 气泡；汇集本轮工具失败后若 Memory 实现 Ingester 则沉淀（可无回复）。
+// runExternal 外置大脑；AssembleContext 已落 user，ExternalTurn.SkipUserAppend=true。
+func (rt *Runtime) runExternal(ctx context.Context, st *lifecycle.RunState) error {
+	if rt.External == nil {
+		return fmt.Errorf("defaults: no External（SetExternal 后再 think=external）")
+	}
+	if rt.Tools == nil {
+		return fmt.Errorf("defaults: no Tools（SetTools 后再 think=external）")
+	}
+	emit := rt.OnExternalEvent
+	if emit == nil {
+		emit = func(guest.Event) {}
+	}
+	in := guest.ExternalTurnFromState(guest.StateView{
+		Root: st.Root, SessionKey: st.SessionKey, TaskID: st.TaskID,
+		Prompt: st.Prompt, Feedforward: st.Feedforward,
+		SkipUserAppend: st.SkipUserAppend, Values: st.Values,
+	})
+	reply, err := rt.External.RunTurn(ctx, in, rt.Tools, emit)
+	if err != nil {
+		return err
+	}
+	st.Reply = reply
+	return nil
+}
+
+// PersistTurn 落 assistant 气泡；汇集本轮工具失败进 Values。学习在 Learn 步。
 func (rt *Runtime) PersistTurn(ctx context.Context, st *lifecycle.RunState) error {
+	_ = ctx
 	if rt == nil || st == nil {
 		return fmt.Errorf("defaults: nil runtime/state")
 	}
@@ -148,20 +178,35 @@ func (rt *Runtime) PersistTurn(ctx context.Context, st *lifecycle.RunState) erro
 		}
 	}
 	reply := strings.TrimSpace(st.Reply)
-	if reply != "" {
+	// 外置大脑：工具轨迹须夹在 tool_calls 与正文之间，由 Client 落盘。
+	if reply != "" && guest.ThinkMode(st.Values) != guest.ThinkExternal {
 		if _, err := rt.Session.Append(root, "", st.SessionKey, "assistant", reply, st.TaskID, ""); err != nil {
 			return err
 		}
 	}
-	ing, ok := rt.Memory.(memory.Ingester)
-	if !ok {
+	return nil
+}
+
+// Learn Evidence→Candidate→Policy→可选 MD Commit（默认 NoopPolicy）。
+func (rt *Runtime) Learn(ctx context.Context, st *lifecycle.RunState) error {
+	if rt == nil || st == nil {
+		return fmt.Errorf("defaults: nil runtime/state")
+	}
+	learner := rt.Learner
+	if learner == nil {
 		return nil
 	}
+	root := st.Root
+	if root == "" {
+		root = rt.Root()
+		st.Root = root
+	}
 	notes := memory.NotesFromToolErrors(memory.ToolErrorsFromValues(st.Values))
+	reply := strings.TrimSpace(st.Reply)
 	if reply == "" && notes == "" {
 		return nil
 	}
-	return ing.Ingest(ctx, memory.IngestInput{
+	res, err := learner.Run(ctx, learning.Evidence{
 		Root:        root,
 		SessionKey:  st.SessionKey,
 		TaskID:      st.TaskID,
@@ -170,7 +215,18 @@ func (rt *Runtime) PersistTurn(ctx context.Context, st *lifecycle.RunState) erro
 		Feedforward: st.Feedforward,
 		SkillIDs:    memory.SkillIDsFromValues(st.Values),
 		Notes:       notes,
+		Values:      st.Values,
 	})
+	if err != nil {
+		return err
+	}
+	if res.Candidate.ID != "" {
+		st.Set("learning.candidateId", res.Candidate.ID)
+	}
+	if res.Committed {
+		st.Set("learning.committed", true)
+	}
+	return nil
 }
 
 // EndTask 生命周期钩子点（供 Bus after）；投影/Trace 收尾只在 OnExit→FinishTurn。

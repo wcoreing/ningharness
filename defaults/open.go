@@ -14,6 +14,7 @@ import (
 	"github.com/wcoreing/ningharness/guest"
 	"github.com/wcoreing/ningharness/guest/eino"
 	"github.com/wcoreing/ningharness/job"
+	"github.com/wcoreing/ningharness/learning"
 	"github.com/wcoreing/ningharness/lifecycle"
 	"github.com/wcoreing/ningharness/memory"
 	"github.com/wcoreing/ningharness/skill"
@@ -58,8 +59,16 @@ type Runtime struct {
 	ToolGateway *toolgateway.Gateway
 	MCP         *toolgateway.HTTPService
 	Guest       guest.Guest
+	// External 外置大脑（Cursor/Pi/dsh…）；与 Guest 并列，由 Values[think]=external 启用。
+	External guest.External
+	// Tools 外置大脑工具面（须经 Gateway）；think=external 时必设。
+	Tools guest.Tools
+	// OnExternalEvent 外置回合事件（产品映射 UI / 工具账本）；可空。
+	OnExternalEvent guest.Emit
 	// Memory assemble 时贡献前馈；nil=不补充。
 	Memory memory.Memory
+	// Learner 回合后自学习（Candidate + Policy）；nil=跳过 learn 步。
+	Learner *learning.Learner
 	// Skill 方法包插槽；nil=assemble 不做路径匹配。
 	Skill skill.Slot
 	// Lifecycle 默认 Task/Chat 生命周期；可 Clone 后改步骤或 SetLifecycle 替换。
@@ -92,7 +101,8 @@ func Open(opts Opts) (*Runtime, error) {
 	rt := &Runtime{Harness: h, ToolGateway: th, ExtraTools: opts.ExtraTools}
 	rt.Lifecycle = lifecycle.NewDefault(rt)
 	if !opts.WithoutMemory {
-		rt.Memory = memory.NewLessonWithPromotion()
+		rt.Memory = memory.NewLesson() // Recall 读 MD；学习走 Learner
+		rt.Learner = learning.NewDefault()
 	}
 	if !opts.WithoutSkill {
 		rt.Skill = skill.NewDisk()
@@ -198,12 +208,36 @@ func (rt *Runtime) SetGuest(g guest.Guest) {
 	rt.bindJobExecutor()
 }
 
+// SetExternal 设置外置大脑（nil=仅本地 Guest）。
+func (rt *Runtime) SetExternal(ext guest.External) {
+	if rt == nil {
+		return
+	}
+	rt.External = ext
+}
+
+// SetTools 设置外置工具面（实现 guest.Tools，内部应调 Gateway）。
+func (rt *Runtime) SetTools(tools guest.Tools) {
+	if rt == nil {
+		return
+	}
+	rt.Tools = tools
+}
+
 // SetMemory 替换或清空 Memory（nil=assemble 不追加记忆前馈）。
 func (rt *Runtime) SetMemory(m memory.Memory) {
 	if rt == nil {
 		return
 	}
 	rt.Memory = m
+}
+
+// SetLearner 替换或清空 Learner（nil=learn 步 no-op）。
+func (rt *Runtime) SetLearner(l *learning.Learner) {
+	if rt == nil {
+		return
+	}
+	rt.Learner = l
 }
 
 // SetSkill 替换或清空 Skill Slot（nil=assemble 不做路径匹配补 skill id）。

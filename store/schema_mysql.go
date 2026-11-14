@@ -179,24 +179,5 @@ func mysqlSchemaStmts() []string {
   KEY idx_resource_path (project_id, rel_path(191)),
   KEY idx_resource_kind (project_id, kind)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`, t("resource")),
-
-		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (
-  id VARCHAR(191) NOT NULL,
-  project_id VARCHAR(512) NOT NULL,
-  scope VARCHAR(64) NOT NULL DEFAULT 'skill',
-  anchors JSON NOT NULL,
-  body MEDIUMTEXT NOT NULL,
-  status VARCHAR(32) NOT NULL DEFAULT 'active',
-  source_task_id VARCHAR(191) NOT NULL DEFAULT '',
-  parent_task_id VARCHAR(191) NOT NULL DEFAULT '',
-  source_session_key VARCHAR(191) NOT NULL DEFAULT '',
-  supersedes_id VARCHAR(191) NOT NULL DEFAULT '',
-  acked_at_ms BIGINT NOT NULL DEFAULT 0,
-  created_at_ms BIGINT NOT NULL,
-  updated_at_ms BIGINT NOT NULL DEFAULT 0,
-  PRIMARY KEY (project_id, id),
-  KEY idx_lesson_scope_status (project_id, scope, status),
-  KEY idx_lesson_source_task (project_id, source_task_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`, t("lesson_entry")),
 	}
 }

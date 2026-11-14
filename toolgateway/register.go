@@ -123,7 +123,7 @@ func RegisterCoreTools(s *server.MCPServer, h *Gateway) {
 	), h.toolListSkills)
 
 	s.AddTool(mcp.NewTool("get_skill",
-		mcp.WithDescription("读取某 skill 的 SKILL.md 正文，并附 lesson_entry 经验（DB）。Cursor/外置 Agent 用；wnai 优先用 Eino skill 工具。"),
+		mcp.WithDescription("读取某 skill 的 SKILL.md 正文，并附 LESSONS.md 经验（Markdown SSOT）。Cursor/外置 Agent 用；wnai 优先用 Eino skill 工具。"),
 		mcp.WithString("skill", mcp.Required(), mcp.Description("skill id 或 frontmatter name")),
 	), h.toolGetSkill)
 
@@ -136,7 +136,7 @@ func RegisterCoreTools(s *server.MCPServer, h *Gateway) {
 	), h.toolCreateSkill)
 
 	s.AddTool(mcp.NewTool("append_project_skill_note",
-		mcp.WithDescription("写入 lesson_entry（desk.db）。scope=skill|project|personal（默认 skill）；skill scope 必填 skill；personal 跨项目；project 本项目不绑包。Host 盖章 source_task；纠正用 set_lesson_status。"),
+		mcp.WithDescription("写入经验 Markdown SSOT。scope=skill→LESSONS.md；project→.ningharness/MEMORY.md；personal→~/.ningharness/USER.md。skill scope 必填 skill。Host 盖章 source_task；纠正用 set_lesson_status。"),
 		mcp.WithString("note", mcp.Required(), mcp.Description("经验正文")),
 		mcp.WithString("scope", mcp.Description("skill|project|personal；默认 skill")),
 		mcp.WithString("skill", mcp.Description("scope=skill 时必填（id 或 name）")),
@@ -144,19 +144,19 @@ func RegisterCoreTools(s *server.MCPServer, h *Gateway) {
 	), h.toolAppendSkillNote)
 
 	s.AddTool(mcp.NewTool("set_lesson_status",
-		mcp.WithDescription("设置 lesson_entry 状态：active|superseded|expired。纠正旧经验时先对本工具再 append。"),
+		mcp.WithDescription("设置经验 MD 条目状态：active|superseded|expired。纠正旧经验时先对本工具再 append。"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("lesson id")),
 		mcp.WithString("status", mcp.Required(), mcp.Description("active|superseded|expired")),
 	), h.toolSetLessonStatus)
 
 	s.AddTool(mcp.NewTool("list_lessons",
-		mcp.WithDescription("列出 lesson_entry。skill=某包全状态；scope=skill|project|personal；皆空=项目 skill active 摘要。"),
+		mcp.WithDescription("列出经验 MD 条目。skill=某包 LESSONS.md；scope=skill|project|personal；皆空=项目 skill active 摘要。"),
 		mcp.WithString("skill", mcp.Description("skill id；优先于 scope")),
 		mcp.WithString("scope", mcp.Description("skill|project|personal")),
 	), h.toolListLessons)
 
 	s.AddTool(mcp.NewTool("ack_lesson",
-		mcp.WithDescription("认账一条 lesson（acked_at）。新写入默认已可用；用于历史未认账条或再次确认。"),
+		mcp.WithDescription("认账一条经验（acked_at 写入 MD）。新写入默认已可用；用于再次确认。"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("lesson id")),
 	), h.toolAckLesson)
 

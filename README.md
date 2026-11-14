@@ -29,7 +29,7 @@ Each Chat / Job run follows **`lifecycle`**. Phase boundaries use the **Bus** (`
         ▼
 [ningharness core]
    Workspace · Store · Gateway · Lifecycle · RunState
-   swappable slots: Guest · Memory · Skill
+   swappable slots: Guest · External · Memory · Skill
 ```
 
 - **Client**: the caller; UI is not implemented in this library.  
@@ -42,7 +42,7 @@ Each Chat / Job run follows **`lifecycle`**. Phase boundaries use the **Bus** (`
 |------|---------|
 | **Client** | Caller that embeds or invokes this library |
 | **Harness** | Facade: Store + Session + Job |
-| **Store** | In-framework durable state (session / history / task / job / resource / lesson, …) |
+| **Store** | Structured runtime state only (session / history / task / job / resource, …); experience bodies are Markdown |
 | **Workspace** | Project file world (paths relative to root) |
 | **Lifecycle** | Fixed-phase pipeline for one Task / Chat turn (steps + Bus) |
 | **Bus / Event** | Lifecycle events: `Phase × before\|after`; `On` may Block, `Watch` observes only |
@@ -50,10 +50,12 @@ Each Chat / Job run follows **`lifecycle`**. Phase boundaries use the **Bus** (`
 | **Feedforward** | Extra model context on `RunState`; attached when `assemble` persists the user row |
 | **Step** | Domain atom (e.g. `begin_task`, `run_guest`); **not** a tool name |
 | **Gateway** | Tool gateway + MCP core (register / authorize / invoke); sole side-effect entry |
-| **Guest** | Model-loop slot: `Run(Input{Message,Feedforward})`; default Eino; `guest.Chat` sugar without feedforward |
-| **Memory** | Memory slot: feedforward at `assemble`; optional `Ingester` (`FileIngest` JSONL); default `memory.Lesson`; `NewLessonWithFileIngest` bundles both |
-| **Skill** | Method-pack slot: `List` / `Match` / `Load`; default `skill.Disk`; `SetSkill` / `WithoutSkill` |
-| **Lesson** | Experience row in Store; usable in feedforward on write; `ack_lesson` for legacy unacked / re-confirm |
+| **Guest** | Local model-loop slot: `Run(Input{Message,Feedforward})`; default Eino |
+| **External** | Out-of-process brain (Cursor/Pi/dsh…): `RunTurn` + events; tools via host `guest.Tools` → Gateway |
+| **Memory** | Recall slot: `assemble` reads Lesson MD into feedforward; default `memory.Lesson` |
+| **Learning** | `Evidence → Candidate(JSONL) → Policy → Commit(MD)`; Lifecycle `learn`; default NoopPolicy |
+| **Skill** | Method-pack slot: `List` / `Match` / `Load`; default `skill.Disk`; Learn does not patch `SKILL.md` |
+| **Lesson** | Experience **Markdown SSOT**: project=`MEMORY.md`, personal=`USER.md`, skill=`LESSONS.md` |
 | **Task** | One execution record (Store) |
 | **Job** | Queue unit (schedules when to run a Lifecycle; may span tasks) |
 | **Goal** | Outer-loop Job: re-trigger Lifecycle until `GOAL.yaml` status is terminal |
@@ -68,20 +70,23 @@ ningharness/           facade Open/Close/UseProject
   workspace/ protocol/ files / shared DTOs
   store/ session/ history/ resource/   Store
   task/ job/ goal/ trace/
-  skill/ lesson/       Skill Slot + Lesson (Store)
-  memory/              Memory slot (Assemble + optional Ingest)
+  skill/ lesson/       Skill Slot + Lesson (MD SSOT)
+  memory/ learning/    Recall + Learning loop
   guest/ (+ eino/)     Guest slot (Run)
-  defaults/            wiring (Lifecycle Host + Gateway projection + MCP + Eino + Memory + Skill)
+  defaults/            wiring (Lifecycle Host + Gateway + MCP + Eino + Memory + Learner + Skill)
   examples/            sample Client
 ```
 
-Dependency rule: `defaults` → lifecycle / toolgateway / guest / memory / skill; `lifecycle` does not import `toolgateway` (Host injected).
+Dependency rule: `defaults` → lifecycle / toolgateway / guest / memory / learning / skill; `lifecycle` does not import `toolgateway` (Host injected).
+
+Storage: **DB = structured runtime**; narrative experience/skills = **Markdown**; candidates = JSONL (not DB).
 
 Turn projection: `begin_task` → `Gateway.ProjectTurn`; teardown only via `OnExit` → `FinishTurn` (`end_task` is a Bus hook).  
 `runLifecycle` may wrap ctx with `WithRunState` for Host steps; **Guest stays free of RunState** — tool turn identity is the Gateway projection.  
-`assemble_context`: match `skill.paths` → merge caller feedforward + **Memory.Assemble** → `RunState.Feedforward` → persist user.  
+`assemble_context`: match `skill.paths` → merge caller feedforward + **Memory.Assemble** (MD) → `RunState.Feedforward` → persist user.  
 `run_guest`: `Guest.Run` (`guest.Wire` merges feedforward into the model turn).  
-`persist_turn`: persist assistant; if Memory implements **Ingester**, call `Ingest`.  
+`persist_turn`: persist assistant + drain tool errors.  
+`learn`: Evidence → Candidate → Policy → optional MD Commit (default Noop).  
 Tool dispatch: `RegisterHandler` + core `ensureCoreHandlers`; Client extensions need not edit `CallNamedTool`.
 
 ## Quick start

@@ -5,18 +5,13 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/wcoreing/ningharness/store"
 )
 
 func TestAppendListInjectImport(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("HOME", dir)
 	root := filepath.Join(dir, "proj")
-	if err := os.MkdirAll(root, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := store.OpenProject(root); err != nil {
+	if err := os.MkdirAll(filepath.Join(root, "system", "skills", "demo"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -71,15 +66,12 @@ func TestPersonalAndProjectScope(t *testing.T) {
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := store.OpenProject(root); err != nil {
-		t.Fatal(err)
-	}
 
 	p, err := Append(AppendInput{Scope: ScopePersonal, Body: "我偏好短句"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if p.ProjectID != PersonalProjectID || p.Scope != ScopePersonal {
+	if p.Scope != ScopePersonal {
 		t.Fatalf("%+v", p)
 	}
 	if err := Ack("", p.ID); err != nil {
@@ -96,9 +88,9 @@ func TestPersonalAndProjectScope(t *testing.T) {
 	_ = proj
 }
 
-func TestParseLegacyMarkdown(t *testing.T) {
+func TestParseMarkdownEntries(t *testing.T) {
 	md := "# LESSONS\n\n## 2026-01-01 · superseded\n\n<!-- lesson:abc -->\nsource_task: t1\n\nbody here\n"
-	got := parseLegacyMarkdown(md)
+	got := parseMarkdownEntries(md, ScopeSkill, "demo")
 	if len(got) != 1 || got[0].ID != "abc" || got[0].Status != StatusSuperseded || got[0].Body != "body here" {
 		t.Fatalf("%+v", got)
 	}

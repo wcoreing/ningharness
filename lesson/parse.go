@@ -1,42 +1,48 @@
 package lesson
 
 import (
+	"strconv"
 	"strings"
+	"time"
 )
 
-type legacyEntry struct {
-	ID           string
-	Body         string
-	Status       string
-	SourceTaskID string
-	ParentTaskID string
-	SupersedesID string
-}
-
-func parseLegacyMarkdown(md string) []legacyEntry {
+// parseMarkdownEntries 解析 MEMORY / USER / LESSONS MD 节。
+func parseMarkdownEntries(md, scope, skillID string) []Entry {
 	md = strings.TrimSpace(md)
 	if md == "" {
 		return nil
 	}
 	parts := strings.Split(md, "\n## ")
-	var out []legacyEntry
+	var out []Entry
 	for i, p := range parts {
 		p = strings.TrimSpace(p)
 		if p == "" {
 			continue
 		}
-		if i == 0 && (strings.HasPrefix(p, "# LESSONS") || strings.HasPrefix(strings.ToLower(p), "# lessons")) {
-			rest := strings.TrimSpace(strings.TrimPrefix(p, "# LESSONS"))
-			rest = strings.TrimSpace(strings.TrimPrefix(rest, "# Lessons"))
-			if rest != "" && !strings.Contains(rest, "\n## ") && !strings.HasPrefix(rest, "#") {
-				out = append(out, legacyEntry{Body: rest, Status: StatusActive})
+		if i == 0 {
+			lower := strings.ToLower(p)
+			if strings.HasPrefix(lower, "# lessons") || strings.HasPrefix(lower, "# memory") || strings.HasPrefix(lower, "# user") {
+				if idx := strings.Index(p, "\n"); idx >= 0 {
+					rest := strings.TrimSpace(p[idx+1:])
+					if rest != "" && !strings.HasPrefix(rest, "#") {
+						out = append(out, Entry{
+							Scope: scope, SkillID: skillID,
+							Anchors:     Anchors{SkillID: skillID},
+							Body:        rest,
+							Status:      StatusActive,
+							AckedAtMs:   time.Now().UnixMilli(),
+							CreatedAtMs: time.Now().UnixMilli(),
+						})
+					}
+				}
+				continue
 			}
-			continue
 		}
 		title, body, _ := strings.Cut(p, "\n")
 		title = strings.TrimSpace(title)
 		body = strings.TrimSpace(body)
 		status := StatusActive
+		created := int64(0)
 		if base, suf, ok := strings.Cut(title, " · "); ok {
 			suf = strings.ToLower(strings.TrimSpace(suf))
 			suf = strings.TrimPrefix(suf, "status:")
@@ -45,8 +51,16 @@ func parseLegacyMarkdown(md string) []legacyEntry {
 				status = suf
 				title = strings.TrimSpace(base)
 			}
+			if t, err := time.ParseInLocation("2006-01-02 15:04", title, time.Local); err == nil {
+				created = t.UnixMilli()
+			} else if t, err := time.ParseInLocation("2006-01-02", title, time.Local); err == nil {
+				created = t.UnixMilli()
+			}
 		}
-		e := legacyEntry{Status: status}
+		e := Entry{
+			Scope: scope, SkillID: skillID, Anchors: Anchors{SkillID: skillID},
+			Status: status, CreatedAtMs: created,
+		}
 		lines := strings.Split(body, "\n")
 		var bodyLines []string
 		for _, line := range lines {
@@ -66,8 +80,16 @@ func parseLegacyMarkdown(md string) []legacyEntry {
 				case "parent_task":
 					e.ParentTaskID = val
 					continue
+				case "source_session":
+					e.SourceSessionKey = val
+					continue
 				case "supersedes":
 					e.SupersedesID = val
+					continue
+				case "acked_at":
+					if n, err := strconv.ParseInt(val, 10, 64); err == nil {
+						e.AckedAtMs = n
+					}
 					continue
 				}
 			}
@@ -79,6 +101,12 @@ func parseLegacyMarkdown(md string) []legacyEntry {
 		}
 		if e.Body == "" {
 			continue
+		}
+		if e.CreatedAtMs == 0 {
+			e.CreatedAtMs = time.Now().UnixMilli()
+		}
+		if e.AckedAtMs == 0 {
+			e.AckedAtMs = e.CreatedAtMs
 		}
 		out = append(out, e)
 	}
